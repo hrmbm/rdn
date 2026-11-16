@@ -25,13 +25,13 @@ check('mobile Presensi, Time Off and Reimbursement actions share one full-width 
 check('Presensi, Time Off and Reimbursement desktop buttons share an exact 88×36 geometry and 5px radius', /body\.rh-desk-on \.rk-att-actions button,[\s\S]*?body\.rh-desk-on \.rh-reim-actions\.rk-cuti-detail-actions button[\s\S]*?width:88px !important;[\s\S]*?height:36px !important;[\s\S]*?border-radius:5px !important/.test(finalStyle) && /rk-cuti-detail-actions \.rk-btn:not\(\.danger\)[\s\S]*?background:#087A4B !important/.test(finalStyle) && /rk-cuti-detail-actions \.rk-btn\.danger[\s\S]*?background:#B43C35 !important/.test(finalStyle));
 check('attendance left media is explicitly split into proportional map and photo rows', /grid-template-rows:minmax\(0,1\.18fr\) minmax\(0,\.82fr\)/.test(finalStyle));
 check('attendance map iframe and photo are absolutely fitted within their own split boxes', /rk-att-approval-map iframe[\s\S]*?position:absolute;[\s\S]*?inset:0;[\s\S]*?height:100%/.test(finalStyle) && /rk-att-approval-photo img[\s\S]*?position:absolute;[\s\S]*?object-fit:contain/.test(finalStyle));
-check('attendance media column is measured against the right action row at runtime', /function syncDesktopAttendanceApprovalMediaLayout\(shade\)[\s\S]*?action\.getBoundingClientRect\(\)\.bottom[\s\S]*?layout\.style\.height=target/.test(html));
+check('attendance media and detail columns share the fixed popup content height at runtime', /function syncDesktopAttendanceApprovalMediaLayout\(shade\)[\s\S]*?layout\.style\.height='100%'[\s\S]*?body\.style\.height='100%'[\s\S]*?body\.scrollHeight>body\.clientHeight\+2/.test(html));
 check('attendance action buttons remain anchored/sticky at the bottom of the detail panel', /body\.rh-desk-on \.rk-att-actions \{[\s\S]*?position:sticky;[\s\S]*?bottom:0;[\s\S]*?margin-top:auto !important/.test(finalStyle));
 check('reimbursement approval timeline is top-down for manager stage and puts submitter last', /function reimbursementApprovalTimeline\(row,name,created\)[\s\S]*?if\(status==='PENDING_ATASAN'\)return managerPending\+submittedItem;[\s\S]*?if\(status==='PENDING_HR'\)return hrPending\+managerDone\+submittedItem/.test(html));
 check('attendance and Time Off timeline builders keep approver stages above the requester', html.indexOf("timeline = '<div class=\"rk-att-tl-item pending\"") < html.indexOf("Diajukan oleh ' + escH(row.nama") && html.indexOf('stage(superadminClass,superadminLabel') < html.indexOf("stage('done','Diajukan oleh"));
 const marker = (html.match(/<meta name="reholz-release" content="([^"]+)"/) || [])[1];
 const sw = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
 const expected = (sw.match(/const RH_EXPECTED_HTML_RELEASE = '([^']+)'/) || [])[1];
-check('HTML and Service Worker release markers match v62', marker === expected && /rehholz-app-shell-v62/.test(sw));
+check('HTML and Service Worker release markers match v63', marker === expected && /rehholz-app-shell-v63/.test(sw));
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
