@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="id"><head>
-<meta name="reholz-release" content="v14.7.0-approval-flow-logo-assets-pdf-clean">
+<meta name="reholz-release" content="v14.7.8-stage2-approval-consistency">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <link rel="preconnect" href="https://unpkg.com" crossorigin="">
@@ -4525,7 +4525,7 @@ window.__APP_PREPARING_ASSETS = true;
 var SUPABASE_URL = 'https://usizgscyxtbuutzzdlmq.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzaXpnc2N5eHRidXV0enpkbG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNzA4OTAsImV4cCI6MjEwOTc0Njg5MH0.eo1YNLVIii9_QJkb13OleJ2y46LAVc9WrxQtjIrvF60';
 var APP_VERSION = '6.9-REHOLZ-REIMBURSEMENT-REALIZATION-APPROVAL-SDR'; // Kept in sync with existing app-version RPC to avoid forced reload loops.
-var RH_HTML_RELEASE = 'v14.7.0-approval-flow-logo-assets-pdf-clean';
+var RH_HTML_RELEASE = 'v14.7.4-approval-stage2-unified-queue-evidence';
 var RH_DISPLAY_VERSION = 'v14.7.0';
 var RH_RELEASE_STORAGE_KEY = 'reh_html_release_seen';
 var RH_RELEASE_UPGRADE_ACTIVE = false;
@@ -7893,7 +7893,20 @@ function attendanceEvidenceSource(a) {
     if (value !== null && value !== undefined) {
       if (typeof value === 'object') value = value.path || value.storage_path || value.storagePath || value.object_path || value.objectPath || value.file_path || value.filePath || value.signedUrl || value.signed_url || value.signedURL || value.url || value.data_url || value.dataUrl || value.base64 || '';
       var text = String(value || '').trim();
-      if (text && !/^(?:—|–|-|n\/a|null|undefined|\[object Object\])$/i.test(text)) return text;
+      if (text && !/^(?:—|–|-|n\/a|null|undefined|\[object Object\])$/i.test(text)) {
+        // Older attendance records may store base64 in fotoUrl/foto_base64 instead of an evidence object key.
+        // A JPEG payload commonly begins with /9j/; do not send it to getEvidenceSignedUrl as if it were a path.
+        if (!/^(?:data:|blob:|https?:\/\/)/i.test(text) && text.length > 128 && /^[A-Za-z0-9+/=\r\n]+$/.test(text)) {
+          var compact = text.replace(/\s/g, '');
+          var mime = String(a.foto_mime || a.fotoMime || a.photo_mime || a.photoMime || a.mime_type || a.content_type || '').toLowerCase();
+          if (/^\/9j\//.test(compact)) mime = 'image/jpeg';
+          else if (/^iVBORw0KGgo/.test(compact)) mime = 'image/png';
+          else if (/^R0lGOD/.test(compact)) mime = 'image/gif';
+          else if (/^UklGR/.test(compact)) mime = 'image/webp';
+          if (/^image\/(?:jpeg|png|gif|webp)$/.test(mime)) return 'data:' + mime + ';base64,' + compact;
+        }
+        return text;
+      }
     }
   }
   return '';
@@ -8014,32 +8027,73 @@ function mobileEvidenceBoxHtml(a) {
   return '<div class="ph-half" id="adEvidenceBox">' + content + '</div>';
 }
 
+function paintAttendanceEvidencePreview(box, row, options) {
+  options = options || {};
+  if (!box || !row) return Promise.resolve('');
+  normalizeApprovalAttendanceRow(row);
+  var source = attendanceEvidenceSource(row);
+  var rowId = String(row.id || row.absensiId || row.requestId || '');
+  var stateClass = options.messageClass || 'ad-evidence-state';
+  var retryClass = options.retryClass || 'btn btn-ghost';
+  var loadingText = options.loadingMessage || 'Memuat foto bukti…';
+  var missingText = options.missingMessage || 'Foto bukti tidak tersedia.';
+  var errorText = options.errorMessage || 'Foto bukti tidak dapat dimuat.';
+  box.dataset.rhAttendanceEvidenceRowId = rowId;
+  function current() {
+    return !!(box.isConnected && String(box.dataset.rhAttendanceEvidenceRowId || '') === rowId && (!options.isCurrent || options.isCurrent()));
+  }
+  function showState(message, allowRetry) {
+    if (!current()) return;
+    box.innerHTML = '<div class="' + stateClass + '">' + esc(message) + (allowRetry ? '<button type="button" data-rh-att-evidence-retry class="' + retryClass + '" style="margin-top:8px">Coba lagi</button>' : '') + '</div>';
+    var retry = box.querySelector('[data-rh-att-evidence-retry]');
+    if (retry) retry.addEventListener('click', function () { retry.disabled = true; retry.textContent = 'Memuat…'; load(true); });
+  }
+  if (!source) { showState(missingText, false); return Promise.resolve(''); }
+  function load(forceRefresh, initialUrl) {
+    if (!current()) return Promise.resolve('');
+    showState(loadingText, false);
+    var resolved = initialUrl && !forceRefresh ? Promise.resolve(initialUrl) : resolveEvidenceDisplayUrl(source, !!forceRefresh);
+    return resolved.then(function (url) {
+      if (!url) throw new Error('Tautan foto tidak tersedia.');
+      if (!current()) return '';
+      row._fotoDisplayUrl = url;
+      var img = document.createElement('img');
+      img.alt = options.alt || 'Foto bukti presensi';
+      img.decoding = 'async';
+      img.loading = 'eager';
+      if (options.imageClass) img.className = options.imageClass;
+      if (options.imageStyle) img.style.cssText = options.imageStyle;
+      img.onerror = function () {
+        if (!current()) return;
+        if (!forceRefresh) load(true);
+        else showState(errorText, true);
+      };
+      box.innerHTML = '';
+      box.appendChild(img);
+      img.src = driveThumb(url);
+      return url;
+    }).catch(function (error) {
+      if (current()) showState(errorText, true);
+      console.warn('[ReHolz] Attendance evidence preview failed:', error && error.message || error);
+      return '';
+    });
+  }
+  return load(!!options.forceRefresh, options.url || row._fotoDisplayUrl || '');
+}
+window.paintAttendanceEvidencePreview = paintAttendanceEvidencePreview;
+
 function paintMobileAttendanceEvidence(a, url, attemptRefresh) {
   var body = $('adetBody');
-  if (!body || String(body.dataset.attendanceId || '') !== String(a && a.id || '') || !$('s-adet').classList.contains('on')) return;
+  if (!body || String(body.dataset.attendanceId || '') !== String(a && a.id || '') || !$('s-adet').classList.contains('on')) return Promise.resolve('');
   var box = $('adEvidenceBox');
-  if (!box) return;
-  if (!url) {
-    box.innerHTML = '<div class="ad-evidence-state">Foto bukti tidak dapat dimuat.<button type="button" id="adEvidenceRetry" class="btn btn-ghost" style="margin-top:8px">Coba lagi</button></div>';
-    var retry = $('adEvidenceRetry');
-    if (retry) retry.addEventListener('click', function () {
-      retry.disabled = true; retry.textContent = 'Memuat…';
-      prepareEvidenceForDisplay(a, true).then(function () { paintMobileAttendanceEvidence(a, a._fotoDisplayUrl, true); });
-    });
-    return;
-  }
-  box.innerHTML = '<img id="adEvidenceImg" alt="Foto bukti absensi" decoding="async">';
-  var img = $('adEvidenceImg');
-  if (!img) return;
-  img.onerror = function () {
-    if (!attemptRefresh) {
-      resolveEvidenceDisplayUrl(attendanceEvidenceSource(a), true).then(function (freshUrl) {
-        a._fotoDisplayUrl = freshUrl;
-        paintMobileAttendanceEvidence(a, freshUrl, true);
-      }).catch(function () { paintMobileAttendanceEvidence(a, '', true); });
-    } else paintMobileAttendanceEvidence(a, '', true);
-  };
-  img.src = driveThumb(url);
+  if (!box) return Promise.resolve('');
+  return paintAttendanceEvidencePreview(box, a, {
+    url: url || '', forceRefresh: !!attemptRefresh,
+    messageClass: 'ad-evidence-state', retryClass: 'btn btn-ghost',
+    loadingMessage: 'Memuat foto bukti…', missingMessage: 'Foto bukti tidak tersedia.',
+    errorMessage: 'Foto bukti tidak dapat dimuat.', alt: 'Foto bukti absensi',
+    isCurrent: function () { return String(body.dataset.attendanceId || '') === String(a && a.id || '') && $('s-adet').classList.contains('on'); }
+  });
 }
 
 function snapPhoto() {
@@ -8246,9 +8300,39 @@ function reimbursementRpc(fn,params,timeoutMs){
   return rpc(fn,payload,timeoutMs||35000);
 }
 function reimbursementRequestId(row){return String(row&&(row.id||row.request_id||row.requestId)||'').trim();}
+/* Satu aturan kewenangan untuk semua entry point persetujuan Reimbursement.
+ * Harus identik dengan process_reimbursement_approval di backend: HYBRID,
+ * atasan yang benar pada tahap ATASAN, atau SUPERADMIN pada tahap HR. */
+function reimbursementCanActApprovalRow(row,user){
+  row=row||{};user=user||S.user||{};
+  var role=String(user.role||'').trim().toUpperCase();
+  var actor=String(user.nik||user.employee_id||user.employeeId||'').trim().toUpperCase();
+  var requester=String(row.employee_id||row.employeeId||row.nik||'').trim().toUpperCase();
+  var status=String(row.status||row.final_status||'').trim().toUpperCase();
+  var stage=String(row.pending_stage||'').trim().toUpperCase();
+  var job=String(row.job_code||row.jobCode||'').trim().toUpperCase();
+  var manager=String(row.approval_line_id||row.approvalLineId||'').trim().toUpperCase();
+  if(!actor||!requester||actor===requester||job!=='HYBRID'||role==='ADMIN')return false;
+  if(status==='PENDING_ATASAN')return (role==='KARYAWAN'||role==='SUPERADMIN')&&stage==='ATASAN'&&!!manager&&manager===actor;
+  if(status==='PENDING_HR')return role==='SUPERADMIN'&&stage==='HR';
+  return false;
+}
 function reimbursementRequestIsPending(row){
   var status=String(row&&(row.status||row.final_status||row.approval_status)||'').trim().toUpperCase();
   return /^(?:PENDING(?:_|$)|SUBMITTED$|MENUNGGU(?:_|$))/.test(status);
+}
+/* Hilangnya item dari antrean saja tidak membuktikan tindakan dilakukan oleh
+ * approver yang sedang login. Konfirmasi lewat kolom approver di server. */
+async function reimbursementDecisionConfirmed(id,action){
+  var result=await reimbursementRpc('hr_get_reimbursement_approval_status',{p_id:String(id)},25000);
+  if(!result||result.ok===false)return false;
+  var actor=String(S.user&&(S.user.nik||S.user.employee_id||S.user.employeeId)||'').trim().toUpperCase();
+  var status=String(result.status||'').trim().toUpperCase();
+  var managerBy=String(result.manager_approval_by||'').trim().toUpperCase();
+  var hrBy=String(result.hr_approval_by||'').trim().toUpperCase();
+  if(action==='APPROVE')return (status==='PENDING_HR'&&managerBy===actor)||(status==='DISETUJUI'&&hrBy===actor);
+  if(action==='REJECT')return (status==='DITOLAK_ATASAN'&&managerBy===actor)||(status==='DITOLAK_HR'&&hrBy===actor);
+  return false;
 }
 function loadMyReimbursementRequests(){
   if(!rhIsHybridUser())return Promise.resolve([]);
@@ -8263,6 +8347,58 @@ function loadMyReimbursementRequests(){
     return Array.isArray(RH_REIMBURSEMENT_STATE.requests)?RH_REIMBURSEMENT_STATE.requests:[];
   });
 }
+/* Satu pintu pemuatan antrean persetujuan untuk mobile dan desktop.
+ * Endpoint tetap mengikuti kontrak backend yang sudah ada:
+ * get_pending_approvals untuk Presensi/Time Off dan
+ * hr_get_pending_reimbursement_approvals untuk Reimbursement.
+ * Promise in-flight dibagi agar perpindahan layar tidak menggandakan request. */
+var RH_APPROVAL_QUEUE_INFLIGHT = null;
+var RH_APPROVAL_QUEUE_INFLIGHT_GENERATION = null;
+var RH_APPROVAL_QUEUE_DATA_GENERATION = null;
+function loadApprovalQueueCanonical(){
+  var generation=SESSION_GEN;
+  if(RH_APPROVAL_QUEUE_INFLIGHT&&RH_APPROVAL_QUEUE_INFLIGHT_GENERATION===generation)return RH_APPROVAL_QUEUE_INFLIGHT;
+  var user=S.user||{},role=String(user.role||'').toUpperCase();
+  // Do not reuse an approval cache created under another signed-in session.
+  var previous=RH_APPROVAL_QUEUE_DATA_GENERATION===generation?(DATA.appr||{}):{};
+  var corePromise=api('getPendingApprovalsFull',[],25000).then(function(result){
+    if(!result||result.ok===false)throw new Error((result&&result.message)||'Antrean Presensi/Time Off belum tersedia.');
+    return {absensi:Array.isArray(result.absensi)?result.absensi:[],cuti:Array.isArray(result.cuti)?result.cuti:[],base:result,error:null};
+  }).catch(function(error){
+    return {absensi:Array.isArray(previous.absensi)?previous.absensi:[],cuti:Array.isArray(previous.cuti)?previous.cuti:[],base:previous,error:error&&error.message||String(error)};
+  });
+  var reimbursementPromise=(role==='KARYAWAN'||role==='SUPERADMIN')
+    ? reimbursementRpc('hr_get_pending_reimbursement_approvals',{},30000).then(function(result){
+        if(!result||result.ok===false)throw new Error((result&&result.message)||'Antrean Reimbursement belum tersedia.');
+        var rows=Array.isArray(result)?result:(result.requests||result.records||result.data||[]);
+        if(!Array.isArray(rows))throw new Error('Format antrean Reimbursement tidak dikenali.');
+        return {rows:rows,error:null};
+      }).catch(function(error){
+        return {rows:Array.isArray(previous.reimbursement)?previous.reimbursement:[],error:error&&error.message||String(error)};
+      })
+    : Promise.resolve({rows:[],error:null});
+  var flight=Promise.all([corePromise,reimbursementPromise]).then(function(results){
+    if(stale(generation))return {data:DATA.appr||{},errors:{stale:true}};
+    var core=results[0],reim=results[1];
+    var absensi=core.absensi.map(normalizeApprovalAttendanceRow),cuti=core.cuti.map(normalizeApprovalTimeOffRow),reimbursement=reim.rows.slice();
+    var data=Object.assign({},core.base||{},previous,{
+      absensi:absensi,
+      cuti:cuti,
+      reimbursement:reimbursement,
+      total:absensi.length+cuti.length+reimbursement.length
+    });
+    DATA.appr=data;
+    RH_APPROVAL_QUEUE_DATA_GENERATION=generation;
+    return {data:data,errors:{core:core.error||null,reimbursement:reim.error||null}};
+  }).finally(function(){
+    if(RH_APPROVAL_QUEUE_INFLIGHT===flight){RH_APPROVAL_QUEUE_INFLIGHT=null;RH_APPROVAL_QUEUE_INFLIGHT_GENERATION=null;}
+  });
+  RH_APPROVAL_QUEUE_INFLIGHT=flight;
+  RH_APPROVAL_QUEUE_INFLIGHT_GENERATION=generation;
+  return flight;
+}
+window.loadApprovalQueueCanonical=loadApprovalQueueCanonical;
+
 function reimbursementCategoryData(){
   var root=RH_REIMBURSEMENT_STATE.balance||{};
   var key=RH_REIMBURSEMENT_STATE.category==='ENTERTAIN'?'entertain':'transport';
@@ -8487,39 +8623,11 @@ function canActAsDirectManager(role, row, kind) {
 }
 
 function mobileTimeOffAttachmentValue(row) {
-  row = row || {};
-  var keys = ['dokumenPath','dokumen_path','document_path','file_path','filePath','attachment_path','attachmentPath','attachment_storage_path','storage_path','storagePath','path','dokumenUrl','dokumen_url','document_url','file_url','fileUrl','attachment_url','attachment','Attachment'];
-  var raw = '';
-  for (var i = 0; i < keys.length; i++) {
-    var v = row[keys[i]];
-    if (v === null || v === undefined) continue;
-    if (typeof v === 'object') v = v.path || v.storage_path || v.storagePath || v.object_path || v.objectPath || v.file_path || v.filePath || v.signedUrl || v.signed_url || v.signedURL || v.url || v.data_url || v.dataUrl || v.base64 || '';
-    var text = String(v || '').trim();
-    if (text && !/^(?:—|–|-|n\/a|null|undefined|\[object Object\])$/i.test(text)) { raw = text; break; }
-  }
-  if (!raw) return '';
-  if (/^(?:data:|blob:|https?:\/\/|\/)/i.test(raw)) return raw;
-  var mime = String(row.mime || row.mime_type || row.content_type || row.document_mime || row.dokumen_mime || '').toLowerCase();
-  if (raw.length > 128 && /^[A-Za-z0-9+/=\r\n]+$/.test(raw)) {
-    if (/^\/9j\//.test(raw)) mime = 'image/jpeg';
-    else if (/^iVBORw0KGgo/.test(raw)) mime = 'image/png';
-    else if (/^JVBERi0/.test(raw)) mime = 'application/pdf';
-    else if (/^R0lGOD/.test(raw)) mime = 'image/gif';
-    else if (/^UklGR/.test(raw)) mime = 'image/webp';
-    if (/^(?:image\/(?:jpeg|png|gif|webp)|application\/pdf)$/.test(mime)) return 'data:' + mime + ';base64,' + raw.replace(/\s/g, '');
-  }
-  return raw;
+  return approvalTimeOffAttachmentValue(row || {});
 }
 
 function mobileTimeOffAttachmentMime(row, value) {
-  var mime = String(row && (row.mime || row.mime_type || row.content_type || row.document_mime || row.dokumen_mime) || '').toLowerCase();
-  var data = String(value || '').match(/^data:([^;,]+)/i);
-  if (data) mime = data[1].toLowerCase();
-  if (!mime) {
-    if (/\.pdf(?:$|[?#])/i.test(value || '')) mime = 'application/pdf';
-    else if (/\.(?:jpe?g|png|webp|gif|bmp)(?:$|[?#])/i.test(value || '')) mime = 'image/' + (/\.png/i.test(value) ? 'png' : /\.webp/i.test(value) ? 'webp' : /\.gif/i.test(value) ? 'gif' : 'jpeg');
-  }
-  return mime;
+  return approvalTimeOffAttachmentMime(row || {}, value || '');
 }
 
 var RH_MOBILE_CUTI_OBJECT_URL = '';
@@ -9711,12 +9819,104 @@ window.handleMobileNotificationClick = handleMobileNotificationClick;
 function normalizeAbsensiEvidence(a) {
   if (!a || typeof a !== 'object') return a;
   if (!a.id) a.id = a.absensiId || a.absensi_id || a.attendance_id || a.requestId || a.request_id || '';
+  if (!a.nik) a.nik = a.employee_id || a.employeeId || '';
+  if (!a.nama) a.nama = a.employee_name || a.employeeName || a.name || '';
   if (!a.fotoUrl) a.fotoUrl = attendanceEvidenceSource(a);
   if (a.latitude == null && a.lat != null) a.latitude = a.lat;
-  if (a.longitude == null && a.lon != null) a.longitude = a.lon;
+  if (a.longitude == null && (a.lon != null || a.lng != null)) a.longitude = a.lon != null ? a.lon : a.lng;
   if (!a.statusApproval && a.status_approval) a.statusApproval = a.status_approval;
+  if (!a.waktuPengajuan) a.waktuPengajuan = a.submitted_at || a.created_at || a.timestamp || '';
+  if (!a.atasanId) a.atasanId = a.atasan_id || a.manager_employee_id || '';
+  if (!a.alasanApprovalAtasan) a.alasanApprovalAtasan = a.alasan_approval_atasan || '';
+  if (!a.alasanApprovalHR) a.alasanApprovalHR = a.alasan_approval_hr || '';
+  if (!a.managerAt) a.managerAt = a.approval_manager_at || a.approvalManagerAt || '';
+  if (!a.superadminAt) a.superadminAt = a.approval_hr_at || a.approvalHrAt || '';
   return a;
 }
+
+function approvalRowFirstValue(row, keys) {
+  row = row || {};
+  for (var i = 0; i < keys.length; i++) {
+    var value = row[keys[i]];
+    if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+  }
+  return '';
+}
+
+function approvalTimeOffAttachmentValue(row) {
+  row = row || {};
+  var keys = ['dokumenPath','dokumen_path','document_path','file_path','filePath','attachment_path','attachmentPath','attachment_storage_path','storage_path','storagePath','path','dokumenUrl','dokumen_url','document_url','file_url','fileUrl','attachment_url','attachment','Attachment'];
+  var raw = '';
+  for (var i = 0; i < keys.length; i++) {
+    var value = row[keys[i]];
+    if (value === null || value === undefined) continue;
+    if (typeof value === 'object') value = value.path || value.storage_path || value.storagePath || value.object_path || value.objectPath || value.file_path || value.filePath || value.signedUrl || value.signed_url || value.signedURL || value.url || value.data_url || value.dataUrl || value.base64 || '';
+    var text = String(value || '').trim();
+    if (text && !/^(?:—|–|-|n\/a|na|null|undefined|\[object Object\])$/i.test(text)) { raw = text; break; }
+  }
+  if (!raw) return '';
+  if (/^(?:data:|blob:|https?:\/\/)/i.test(raw)) return raw;
+  var mime = String(approvalRowFirstValue(row, ['mime','document_mime','dokumenMime','dokumen_mime','file_mime','mime_type','content_type']) || '').toLowerCase();
+  // Base64 JPEG begins with "/9j/", so detect embedded binary before treating a leading slash as a file path.
+  if (raw.length > 128 && /^[A-Za-z0-9+/=\r\n]+$/.test(raw)) {
+    if (/^\/9j\//.test(raw)) mime = 'image/jpeg';
+    else if (/^iVBORw0KGgo/.test(raw)) mime = 'image/png';
+    else if (/^JVBERi0/.test(raw)) mime = 'application/pdf';
+    else if (/^R0lGOD/.test(raw)) mime = 'image/gif';
+    else if (/^UklGR/.test(raw)) mime = 'image/webp';
+    if (/^(?:image\/(?:jpeg|png|gif|webp)|application\/pdf)$/.test(mime)) return 'data:' + mime + ';base64,' + raw.replace(/\s/g, '');
+  }
+  return raw;
+}
+
+function approvalTimeOffAttachmentMime(row, value) {
+  var mime = String(approvalRowFirstValue(row, ['mime','document_mime','dokumenMime','dokumen_mime','file_mime','mime_type','content_type']) || '').toLowerCase();
+  var data = String(value || '').match(/^data:([^;,]+)/i);
+  if (data) mime = data[1].toLowerCase();
+  if (!mime) {
+    if (/\.pdf(?:$|[?#])/i.test(value || '')) mime = 'application/pdf';
+    else if (/\.(?:jpe?g|png|webp|gif|bmp)(?:$|[?#])/i.test(value || '')) mime = 'image/' + (/\.png/i.test(value) ? 'png' : /\.webp/i.test(value) ? 'webp' : /\.gif/i.test(value) ? 'gif' : 'jpeg');
+  }
+  return mime;
+}
+
+function normalizeApprovalAttendanceRow(row) {
+  return normalizeAbsensiEvidence(row && typeof row === 'object' ? row : {});
+}
+
+function normalizeApprovalTimeOffRow(row) {
+  row = row || {};
+  var attachment = approvalTimeOffAttachmentValue(row);
+  var dinas = approvalRowFirstValue(row, ['dinasLuarSakit','dinas_luar_sakit','sick_outside_leave']);
+  return Object.assign({}, row, {
+    id: String(approvalRowFirstValue(row, ['id','request_id','cuti_id']) || ''),
+    waktuPengajuan: String(approvalRowFirstValue(row, ['waktuPengajuan','waktu_pengajuan','submitted_at','submittedAt','created_at','createdAt','timestamp','requested_at','requestedAt']) || ''),
+    nik: String(approvalRowFirstValue(row, ['nik','employee_id','employeeId']) || ''),
+    nama: String(approvalRowFirstValue(row, ['nama','employee_name','employeeName','name']) || ''),
+    kode: String(approvalRowFirstValue(row, ['kode','kodeCuti','kode_cuti','time_off_code']) || ''),
+    dinasLuarSakit: dinas === true || String(dinas || '').toLowerCase() === 'true',
+    areaSakit: String(approvalRowFirstValue(row, ['areaSakit','area_sakit','sick_outside_area']) || ''),
+    keterangan: String(approvalRowFirstValue(row, ['keterangan','keterangan_cuti','time_off_type','type_name']) || ''),
+    tanggalMulai: String(approvalRowFirstValue(row, ['tanggalMulai','tanggal_mulai','start_date','start']) || ''),
+    tanggalSelesai: String(approvalRowFirstValue(row, ['tanggalSelesai','tanggal_selesai','end_date','end']) || ''),
+    totalHari: approvalRowFirstValue(row, ['totalHari','total_hari','days','total_days']),
+    alasan: String(approvalRowFirstValue(row, ['alasan','reason']) || ''),
+    statusAtasan: String(approvalRowFirstValue(row, ['statusAtasan','status_atasan','manager_status']) || 'PENDING').toUpperCase(),
+    statusHR: String(approvalRowFirstValue(row, ['statusHR','status_hr','superadmin_status','hr_status']) || 'PENDING').toUpperCase(),
+    alasanAtasan: String(approvalRowFirstValue(row, ['alasanAtasan','alasan_atasan']) || ''),
+    alasanHR: String(approvalRowFirstValue(row, ['alasanHR','alasan_hr']) || ''),
+    approvalLineId: String(approvalRowFirstValue(row, ['approvalLineId','approval_line_id','approvalLineID','atasanId','atasan_id','manager_employee_id']) || '').trim(),
+    delegateTo: String(approvalRowFirstValue(row, ['delegateTo','delegate_to']) || ''),
+    delegateToName: String(approvalRowFirstValue(row, ['delegateToName','delegate_name','delegate_name_full']) || ''),
+    dokumenUrl: attachment,
+    dokumenPath: attachment,
+    attachmentMime: approvalTimeOffAttachmentMime(row, attachment)
+  });
+}
+window.normalizeApprovalAttendanceRow = normalizeApprovalAttendanceRow;
+window.normalizeApprovalTimeOffRow = normalizeApprovalTimeOffRow;
+window.approvalTimeOffAttachmentValue = approvalTimeOffAttachmentValue;
+window.approvalTimeOffAttachmentMime = approvalTimeOffAttachmentMime;
 
 function approvalEvidenceReady(a) {
   // Missing evidence must be visible to approvers, not silently remove a pending request from the queue.
@@ -9754,76 +9954,137 @@ async function getReimbursementAttachmentDisplayUrl(raw){
   if(typeof signed!=='string'||!/^https?:\/\//i.test(signed))throw new Error((batch&&(batch.message||batch.error))||'Tautan bukti Reimbursement belum tersedia.');
   return signed;
 }
-async function paintMobileReimbursementAttachment(row,requestId){
-  var box=document.getElementById('rdetFilePreview'),open=document.getElementById('rdetFileOpen');
+function reimbursementStatusPresentation(row){
+  var status=String(row&&(row.status||row.final_status||row.approval_status)||'PENDING_ATASAN').trim().toUpperCase();
+  if(status==='DISETUJUI'||status==='APPROVED')return {text:'Disetujui',tone:'ok'};
+  if(status==='DITOLAK_ATASAN')return {text:'Ditolak atasan langsung',tone:'no'};
+  if(status==='DITOLAK_HR')return {text:'Ditolak Superadmin',tone:'no'};
+  if(status==='PENDING_HR')return {text:'Menunggu persetujuan Superadmin',tone:'warn'};
+  return {text:'Menunggu persetujuan atasan langsung',tone:'warn'};
+}
+function reimbursementDisplayDateTime(value){
+  if(!value)return '—';
+  var date=new Date(value);
+  if(Number.isNaN(date.getTime()))return String(value);
+  return date.toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'});
+}
+function reimbursementApprovalTimeline(row,name,created){
+  row=row||{};
+  var status=String(row.status||row.final_status||'PENDING_ATASAN').trim().toUpperCase();
+  var managerName=String(row.manager_approver_name||row.approval_line_name||'atasan langsung');
+  var hrName=String(row.hr_approver_name||'Superadmin');
+  var managerAt=reimbursementDisplayDateTime(row.manager_approval_at);
+  var hrAt=reimbursementDisplayDateTime(row.hr_approval_at);
+  var submitted=created&&created!=='—'?created:'';
+  var submittedItem=tlItem('base','Diajukan oleh '+name,submitted);
+  var managerDone=tlItem('ok','Disetujui oleh '+managerName,row.manager_approval_at?managerAt:'');
+  var managerPending=tlItem('wait','Menunggu persetujuan atasan langsung','');
+  var managerRejected=tlItem('no','Ditolak atasan langsung',String(row.manager_note||'').trim());
+  var hrDone=tlItem('ok','Disetujui oleh '+hrName,row.hr_approval_at?hrAt:'');
+  var hrPending=tlItem('wait','Menunggu persetujuan Superadmin','');
+  var hrRejected=tlItem('no','Ditolak Superadmin',String(row.hr_note||'').trim());
+  // Visual direction follows the established desktop Presensi and Time Off timeline:
+  // current/most senior approver at the top; original requester at the bottom.
+  if(status==='PENDING_ATASAN')return managerPending+submittedItem;
+  if(status==='PENDING_HR')return hrPending+managerDone+submittedItem;
+  if(status==='DISETUJUI'||status==='APPROVED')return hrDone+managerDone+submittedItem;
+  if(status==='DITOLAK_ATASAN')return managerRejected+submittedItem;
+  if(status==='DITOLAK_HR')return hrRejected+managerDone+submittedItem;
+  return submittedItem;
+}
+function buildReimbursementApprovalDetail(row,id,canAct){
+  row=row||{};
+  var status=reimbursementStatusPresentation(row),name=String(row.employee_name||row.nama||row.employee_id||'Karyawan');
+  var nik=String(row.employee_id||row.nik||'—');
+  var created=reimbursementDisplayDateTime(row.created_at||row.submitted_at||row.waktu_pengajuan||row.waktuPengajuan);
+  var category=String(row.category||'').toUpperCase();
+  var categoryLabel=category==='ENTERTAIN'?'Entertain':category==='TRANSPORT'?'Transport':(row.category||'—');
+  var amount=Number(row.amount!=null?row.amount:(row.nominal||0));
+  var over=Number(row.over_budget_amount!=null?row.over_budget_amount:(row.over_budget_at_submission||0));
+  if(!Number.isFinite(over))over=0;
+  over=Math.max(0,over);
+  var attachment=!!reimbursementAttachmentPath(row);
+  var note=String(row.note||row.catatan||'').trim();
+  var proofMessage=attachment?'Memuat lampiran…':'Tidak ada lampiran pada pengajuan ini.';
+  return '<div class="rh-reim-approval-detail" data-reimbursement-id="'+esc(id)+'">'+
+    '<div class="rh-reim-evidence-hero'+(attachment?' has-attachment':'')+'">'+
+      '<div class="rh-reim-evidence" id="rhReimProof" data-request-id="'+esc(id)+'"><div class="rh-reim-proof-state">'+proofMessage+'</div></div>'+
+      '<span class="pill '+status.tone+' rh-reim-status-pill">'+esc(status.text)+'</span>'+
+    '</div>'+
+    '<div class="rh-reim-detail-body">'+
+      '<div class="det-row rh-reim-requester"><small>Pengajuan Reimbursement</small><div><b>'+esc(name)+'</b></div><div>'+esc(nik)+'</div><div class="sub">Diajukan '+esc(created)+'</div></div>'+
+      '<div class="det-row"><small>Jenis Reimbursement</small><div><b>'+esc(categoryLabel)+'</b></div></div>'+
+      '<div class="det-row"><small>Tanggal pengeluaran</small><div>'+esc(tglID(row.request_date||row.tanggal||'')||'—')+'</div></div>'+
+      '<div class="det-row"><small>Nominal</small><div><b>'+esc(reimbursementMoney(amount))+'</b></div></div>'+
+      '<div class="det-row"><small>Catatan / alasan</small><div>'+esc(note||'—')+'</div></div>'+
+      '<div class="det-row rh-reim-overbudget'+(over>0?' is-overbudget':'')+'"><small>Overbudget</small><div><strong>'+esc(reimbursementMoney(over))+'</strong></div></div>'+
+      '<div class="det-row"><small>Status dan tahapan persetujuan</small><div class="tl">'+reimbursementApprovalTimeline(row,name,created)+'</div></div>'+
+      (canAct?'<div class="rh-reim-decision"><label for="rhReimDecisionNote">Catatan keputusan (wajib untuk penolakan)</label><textarea id="rhReimDecisionNote" maxlength="300" rows="2" placeholder="Catatan keputusan"></textarea><div class="rh-reim-actions rk-cuti-detail-actions"><button type="button" class="rk-btn" data-reim-detail-action="APPROVE">Setujui</button><button type="button" class="rk-btn danger" data-reim-detail-action="REJECT">Tolak</button></div></div>':'')+
+    '</div></div>';
+}
+window.buildReimbursementApprovalDetail=buildReimbursementApprovalDetail;
+async function paintReimbursementAttachmentPreview(row,requestId,box){
+  row=row||{};
+  if(typeof box==='string')box=document.getElementById(box);
   if(!box)return;
-  var raw=reimbursementAttachmentPath(row);
-  box.dataset.requestId=String(requestId||'');
-  if(!raw){box.innerHTML='<div class="rh-mobile-file-message">Tidak ada bukti transaksi pada pengajuan ini.</div>';return;}
-  box.innerHTML='<div class="rh-mobile-file-message">Memuat bukti transaksi…</div>';if(open)open.innerHTML='';
+  var raw=reimbursementAttachmentPath(row),id=String(requestId||'');
+  box.dataset.requestId=id;
+  if(!raw){box.innerHTML='<div class="rh-reim-proof-state">Tidak ada lampiran pada pengajuan ini.</div>';return;}
+  box.innerHTML='<div class="rh-reim-proof-state">Memuat lampiran…</div>';
+  function isCurrent(){return box.isConnected&&String(box.dataset.requestId||'')===id;}
+  function showFrame(url){
+    if(!isCurrent())return;
+    box.innerHTML='';
+    var frame=document.createElement('iframe');
+    frame.className='rh-reim-proof-frame';frame.title='Lampiran pengajuan Reimbursement';
+    frame.setAttribute('loading','eager');frame.setAttribute('referrerpolicy','no-referrer');
+    frame.src=url+(String(url).indexOf('#')>=0?'&':'#')+'toolbar=0&navpanes=0';
+    box.appendChild(frame);
+  }
   try{
     var url=await getReimbursementAttachmentDisplayUrl(raw);
-    if(!box.isConnected||String(box.dataset.requestId)!==String(requestId))return;
-    var mime=reimbursementAttachmentMime(row,raw),isImage=mime.indexOf('image/')===0||/\.(?:jpe?g|png|webp|gif|bmp)(?:$|[?#])/i.test(raw),isPdf=mime==='application/pdf'||/\.pdf(?:$|[?#])/i.test(raw);
-    box.innerHTML='';
+    if(!isCurrent())return;
+    var mime=reimbursementAttachmentMime(row,raw);
+    var isPdf=mime==='application/pdf'||/\.pdf(?:$|[?#])/i.test(raw);
+    var isImage=mime.indexOf('image/')===0||/\.(?:jpe?g|png|webp|gif|bmp|avif)(?:$|[?#])/i.test(raw);
+    var isVideo=mime.indexOf('video/')===0||/\.(?:mp4|webm|ogg|mov)(?:$|[?#])/i.test(raw);
+    var isAudio=mime.indexOf('audio/')===0||/\.(?:mp3|m4a|wav|oga)(?:$|[?#])/i.test(raw);
+    if(isPdf){showFrame(url);return;}
+    if(isVideo||isAudio){
+      box.innerHTML='';var media=document.createElement(isVideo?'video':'audio');
+      media.className='rh-reim-proof-media';media.controls=true;media.preload='metadata';media.src=url;
+      if(isCurrent())box.appendChild(media);return;
+    }
     if(isImage){
-      var img=document.createElement('img');img.alt='Bukti transaksi Reimbursement';img.loading='eager';img.decoding='async';
-      img.style.cssText='display:block;max-width:100%;max-height:420px;width:auto;height:auto;object-fit:contain;margin:0 auto;border-radius:10px;background:#f7f9f7';
-      var retried=false;
-      img.onerror=async function(){
-        if(!retried&&!/^(?:data:|blob:)/i.test(raw)){
-          retried=true;img.style.opacity='.55';
-          try{var fresh=await getReimbursementAttachmentDisplayUrl(raw);if(!img.isConnected)return;img.style.opacity='1';img.src=fresh;if(open)open.innerHTML='<a href="'+esc(fresh)+'" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:8px;font-weight:700">Buka / unduh bukti ↗</a>';return;}catch(_){}
-        }
-        if(box.isConnected)box.innerHTML='<div class="rh-mobile-file-message">Foto bukti tidak dapat dimuat. Gunakan tautan Buka bukti atau periksa akses lampiran.</div>';
-      };
-      img.src=url;box.appendChild(img);
-    }else if(isPdf){
-      var frame=document.createElement('iframe');frame.title='Pratinjau bukti Reimbursement PDF';frame.style.cssText='display:block;width:100%;height:420px;border:1px solid #e1e9e3;border-radius:10px;background:#fff';frame.src=url+'#toolbar=1&navpanes=0';box.appendChild(frame);
-    }else box.innerHTML='<div class="rh-mobile-file-message">Pratinjau tidak tersedia untuk format ini. Gunakan tautan Buka bukti.</div>';
-    if(open)open.innerHTML='<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:8px;font-weight:700">Buka / unduh bukti ↗</a>';
-  }catch(err){
-    console.warn('[ReHolz] Mobile Reimbursement attachment could not be displayed:',err&&err.message||err);
-    if(box.isConnected&&String(box.dataset.requestId)===String(requestId))box.innerHTML='<div class="rh-mobile-file-message">Bukti transaksi tidak dapat dimuat. Coba buka kembali pengajuan atau gunakan tombol muat ulang.</div>';
+      box.innerHTML='';var knownImg=document.createElement('img');
+      knownImg.className='rh-reim-proof-image';knownImg.alt='Foto bukti transaksi Reimbursement';knownImg.decoding='async';knownImg.loading='eager';
+      knownImg.onerror=function(){if(isCurrent())box.innerHTML='<div class="rh-reim-proof-state">Foto lampiran tidak dapat dimuat.</div>';};
+      knownImg.src=url;box.appendChild(knownImg);return;
+    }
+    // Object storage path sering tidak memiliki ekstensi dan RPC tidak mengirim MIME.
+    // Coba gambar lebih dahulu; bila bukan gambar (misalnya PDF), gunakan viewer inline.
+    box.innerHTML='';var unknown=document.createElement('img');
+    unknown.className='rh-reim-proof-image';unknown.alt='Pratinjau lampiran Reimbursement';unknown.decoding='async';unknown.loading='eager';
+    var switched=false;unknown.onerror=function(){if(!switched){switched=true;showFrame(url);}};
+    unknown.src=url;box.appendChild(unknown);
+  }catch(error){
+    console.warn('[ReHolz] Reimbursement attachment preview failed:',error&&error.message||error);
+    if(isCurrent())box.innerHTML='<div class="rh-reim-proof-state">Lampiran tidak dapat dimuat.</div>';
   }
 }
+window.paintReimbursementAttachmentPreview=paintReimbursementAttachmentPreview;
 function openMobileReimbursementDetail(row,fromAppr,backScreen){
   row=row||{};var id=reimbursementRequestId(row);if(!id){toast('ID pengajuan Reimbursement tidak tersedia.');return;}
   _backTo=backScreen||(fromAppr?'s-appr':'s-inbox');
-  var role=String(S.user&&S.user.role||'').toUpperCase(),status=String(row.status||row.final_status||'PENDING_ATASAN').toUpperCase(),stage=String(row.pending_stage||'ATASAN').toUpperCase();
-  var pendingManager=status==='PENDING_ATASAN'&&stage!=='HR',pendingSuperadmin=status==='PENDING_HR'||stage==='HR';
-  var myNik=String(S.user&&S.user.nik||'').trim();
-  var assignedLine=String(row.approval_line_id||row.approvalLineId||'').trim();
-  var canActManager=pendingManager&&(role==='KARYAWAN'||role==='SUPERADMIN')&&(!assignedLine||assignedLine===myNik);
-  var canActSuper=pendingSuperadmin&&status==='PENDING_HR'&&role==='SUPERADMIN';
-  var canActReim=!!fromAppr&&role!=='ADMIN'&&(canActManager||canActSuper);
-  var statusText=/APPROVED|DISETUJUI/.test(status)?'Disetujui':(/REJECT|DITOLAK/.test(status)?'Ditolak':(pendingSuperadmin?'Menunggu persetujuan Superadmin':'Menunggu persetujuan atasan langsung'));
-  var tone=/APPROVED|DISETUJUI/.test(status)?'ok':(/REJECT|DITOLAK/.test(status)?'no':'warn');
-  function when(value){if(!value)return '';var d=new Date(value);return Number.isNaN(d.getTime())?String(value):d.toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'});}
-  var name=String(row.employee_name||row.nama||S.user&&S.user.nama||'Karyawan'),nik=String(row.employee_id||row.nik||S.user&&S.user.nik||'');
-  var cat=String(row.category||'').toUpperCase()==='ENTERTAIN'?'Entertain':'Transport';
-  var created=when(row.created_at||row.submitted_at||row.waktu_pengajuan)||'—';
-  var managerName=String(row.manager_approver_name||row.approval_line_name||'Atasan langsung');
-  var superName=String(row.hr_approver_name||'Superadmin');
-  var managerLine=pendingManager?tlItem('wait','Menunggu persetujuan atasan langsung',''):(row.manager_approval_at?tlItem('ok','Disetujui atasan langsung',when(row.manager_approval_at)+' · '+managerName):tlItem('base','Tahap atasan langsung',managerName));
-  var superLine=pendingSuperadmin?tlItem('wait','Menunggu persetujuan Superadmin',''):(row.hr_approval_at?tlItem('ok','Tahap Superadmin',when(row.hr_approval_at)+' · '+superName):tlItem('base','Tahap Superadmin','Menunggu penyelesaian tahap atasan langsung'));
-  var attachment=reimbursementAttachmentPath(row);
-  var html='<div class="det-body"><div class="det-hero"><span class="pill '+tone+'">'+esc(statusText)+'</span></div>'+ 
-    '<div class="det-row"><small>Pengaju</small><div><b>'+esc(name)+'</b></div><div>'+esc(nik)+'</div><div class="sub">Diajukan '+esc(created)+'</div></div>'+ 
-    '<div class="det-row"><small>Jenis Reimbursement</small><div><b>'+esc(cat)+'</b></div></div>'+ 
-    '<div class="det-row"><small>Tanggal pengeluaran</small><div>'+esc(tglID(row.request_date||row.tanggal||''))+'</div></div>'+ 
-    '<div class="det-row"><small>Nominal</small><div><b>'+esc(reimbursementMoney(row.amount||row.nominal||0))+'</b></div></div>'+ 
-    '<div class="det-row"><small>Catatan / alasan</small><div>'+esc(row.note||row.catatan||'Tidak ada catatan.')+'</div></div>'+ 
-    (Number(row.over_budget_amount||0)>0?'<div class="det-row"><small>Overbudget</small><div>'+esc(reimbursementMoney(row.over_budget_amount))+'</div></div>':'')+ 
-    (attachment?'<div class="det-row"><small>Bukti transaksi</small><div id="rdetFilePreview" data-request-id="'+esc(id)+'" class="rh-mobile-file-preview"><div class="rh-mobile-file-message">Memuat bukti transaksi…</div></div><div id="rdetFileOpen"></div></div>':'<div class="det-row"><small>Bukti transaksi</small><div>Tidak ada lampiran yang tercatat.</div></div>')+ 
-    '<div class="det-row"><small>Status dan tahapan persetujuan</small><div class="tl">'+tlItem('base','Diajukan oleh '+name,created)+managerLine+superLine+'</div></div>'+
-    (fromAppr?'<div class="warn-banner" style="margin:0 0 14px;border-radius:10px">'+(role==='ADMIN'?'Anda dapat meninjau pengajuan ini; akun Admin tidak memiliki kewenangan persetujuan.':'Pengajuan ini ditampilkan dari antrean persetujuan. Aturan tindakan tetap mengikuti tahap dan kewenangan yang sudah berlaku.')+'</div>':'')+
-    (canActReim?'<div class="field" style="margin:2px 0 14px"><label>Catatan keputusan (wajib untuk penolakan)</label><input id="rdNote" maxlength="300" placeholder="Catatan keputusan"></div>'+
-    '<div class="det-actions"><button type="button" class="btn btn-blue" id="rdApproveBtn" onclick="actMobileReimbursement(\''+esc(id)+'\',true)">Setujui</button>'+
-    '<button type="button" class="btn btn-ghost" id="rdRejectBtn" onclick="actMobileReimbursement(\''+esc(id)+'\',false)">Tolak</button></div>':'')+
-    '</div>';
-  $('rdetBody').innerHTML=html;go('s-rdet');saveLastScreen('s-rdet',{id:id});
-  if(attachment)paintMobileReimbursementAttachment(row,id);
+  var canAct=!!fromAppr&&reimbursementCanActApprovalRow(row,S.user);
+  var body=$('rdetBody');
+  body.innerHTML=buildReimbursementApprovalDetail(row,id,canAct);
+  body.onclick=function(event){
+    var action=event.target&&event.target.closest?event.target.closest('[data-reim-detail-action]'):null;
+    if(action&&!action.disabled){actMobileReimbursement(id,action.getAttribute('data-reim-detail-action')==='APPROVE');}
+  };
+  go('s-rdet');saveLastScreen('s-rdet',{id:id});
+  paintReimbursementAttachmentPreview(row,id,'rhReimProof');
 }
 function openMobileReimbursementById(id,fromAppr){
   var wanted=String(id||'');var row=null;
@@ -9865,11 +10126,13 @@ async function actMobileReimbursement(id,approve){
   if(!id)return;
   var inflight=window.__rhReimActInflight;
   if(inflight[id]){toast('Permintaan sedang diproses. Tunggu hingga selesai.');return;}
-  var noteEl=document.getElementById('rdNote'),note=String(noteEl&&noteEl.value||'').trim();
+  var target=((DATA.appr&&DATA.appr.reimbursement)||[]).find(function(row){return reimbursementRequestId(row)===id;});
+  if(!target||!reimbursementCanActApprovalRow(target,S.user)){toast('Tahap persetujuan berubah atau tugas ini bukan milik Anda. Muat ulang antrean.');return;}
+  var noteEl=document.getElementById('rhReimDecisionNote'),note=String(noteEl&&noteEl.value||'').trim();
   var action=approve?'APPROVE':'REJECT';
   if(!approve&&!note){toast('Catatan penolakan wajib diisi.');if(noteEl)noteEl.focus();return;}
-  var buttons=[document.getElementById('rdApproveBtn'),document.getElementById('rdRejectBtn')].filter(Boolean);
-  buttons.forEach(function(b){b.disabled=true;b.textContent='Menyimpan…';});
+  var buttons=Array.prototype.slice.call(document.querySelectorAll('#rdetBody [data-reim-detail-action]'));
+  buttons.forEach(function(b){b.disabled=true;b.dataset.originalLabel=b.textContent;b.textContent='Menyimpan…';});
   inflight[id]=true;
   try{
     var r=await reimbursementRpc('process_reimbursement_approval',{p_id:id,p_action:action,p_alasan:note},45000);
@@ -9879,43 +10142,46 @@ async function actMobileReimbursement(id,approve){
     go('s-appr');
     if(typeof renderApprPane==='function')renderApprPane();
   }catch(e){
-    var sync=await rhResyncReimbursementApproval(id);
-    if(sync&&!sync.stillPending){
-      toast('Keputusan sudah tersimpan di server. Antrean persetujuan disegarkan.');
+    var confirmed=false,sync=null;
+    try{confirmed=await reimbursementDecisionConfirmed(id,action);}catch(verifyError){console.warn('[ReHolz] Verifikasi keputusan Reimbursement gagal:',verifyError&&verifyError.message||verifyError);}
+    sync=await rhResyncReimbursementApproval(id);
+    if(confirmed){
+      toast('Keputusan terverifikasi tersimpan di server. Antrean persetujuan disegarkan.');
+      go('s-appr');
+      if(typeof renderApprPane==='function')renderApprPane();
+    }else if(sync&&!sync.stillPending){
+      toast('Pengajuan sudah tidak berada di antrean. Muat status/riwayat untuk memastikan siapa yang memprosesnya.');
       go('s-appr');
       if(typeof renderApprPane==='function')renderApprPane();
     }else{
       toast((e&&e.message)||'Keputusan Reimbursement gagal disimpan.');
-      buttons.forEach(function(b){b.disabled=false;b.textContent=b.id==='rdApproveBtn'?'Setujui':'Tolak';});
+      buttons.forEach(function(b){b.disabled=false;b.textContent=b.getAttribute('data-reim-detail-action')==='APPROVE'?'Setujui':'Tolak';});
     }
   }finally{
     delete inflight[id];
   }
 }
 window.actMobileReimbursement=actMobileReimbursement;
+// Inline event handlers are resolved on window; this bridge is required by the mobile
+// Reimbursement approval list to open the request detail and expose approve/reject actions.
+window.openMobileReimbursementById=openMobileReimbursementById;
 window.rhResyncReimbursementApproval=rhResyncReimbursementApproval;
 
 function refreshPending() {
-  if (!S.approver) return Promise.resolve();
-  var gen = SESSION_GEN;
-  return Promise.all([
-    api('getPendingApprovalsFull', [S.user.role, S.user.nik], 25000),
-    reimbursementRpc('hr_get_pending_reimbursement_approvals',{}).catch(function(){return {requests:[]};})
-  ]).then(function(results) {
-    if (stale(gen)) return results[0];
-    var r = results[0] || {}, reimResult=results[1]||{};
-    var rawAbsensi = Array.isArray(r.absensi) ? r.absensi : [];
-    rawAbsensi.forEach(normalizeAbsensiEvidence);
-    var readyAbsensi = rawAbsensi.filter(approvalEvidenceReady);
-    var reimRows=Array.isArray(reimResult)?reimResult:(reimResult.requests||reimResult.records||[]);
-    if(!Array.isArray(reimRows))reimRows=[];
-    DATA.appr = Object.assign({}, r, { absensi: readyAbsensi, reimbursement:reimRows, total: readyAbsensi.length + (Array.isArray(r.cuti) ? r.cuti.length : 0) + reimRows.length });
-    S.pendingTotal = String(S.user && S.user.role || '').toUpperCase() === 'ADMIN' ? 0 : (DATA.appr.total || 0);
-    RH_NOTIF_STATE.pendingCount = S.pendingTotal;
+  if (!S.approver) return Promise.resolve(DATA.appr);
+  var gen=SESSION_GEN;
+  return loadApprovalQueueCanonical().then(function(result){
+    if(stale(gen))return DATA.appr;
+    var data=result&&result.data||DATA.appr||{absensi:[],cuti:[],reimbursement:[],total:0};
+    var errors=result&&result.errors||{};
+    if(errors.reimbursement)console.warn('[ReHolz] Antrean Reimbursement belum dapat diperbarui:',errors.reimbursement);
+    if(errors.core)console.warn('[ReHolz] Antrean Presensi/Time Off belum dapat diperbarui:',errors.core);
+    S.pendingTotal=String(S.user&&S.user.role||'').toUpperCase()==='ADMIN'?0:(data.total||0);
+    RH_NOTIF_STATE.pendingCount=S.pendingTotal;
     updateBadges();
-    if ($('s-inbox').classList.contains('on') && !$('paneAppr').style.display) renderApprPane();
-    return DATA.appr;
-  }).catch(function() {});
+    if ($('s-inbox') && $('s-inbox').classList.contains('on') && !$('paneAppr').style.display) renderApprPane();
+    return data;
+  }).catch(function(error){console.warn('[ReHolz] Approval queue load failed:',error&&error.message||error);return DATA.appr;});
 }
 
 function loadApprPane() {
@@ -9995,9 +10261,7 @@ async function openAbsenDetail(id, fromAppr) {
   renderAbsenDetail(a, fromAppr);
   saveDetailScreen('s-adet', id);
   // Keep the request sheet responsive: evidence URL resolution must never block the approval details.
-  if (attendanceEvidenceSource(a)) {
-    prepareEvidenceForDisplay(a).then(function () { paintMobileAttendanceEvidence(a, a._fotoDisplayUrl || '', false); });
-  }
+  if (attendanceEvidenceSource(a)) paintMobileAttendanceEvidence(a, a._fotoDisplayUrl || '', false);
 }
 
 function renderAbsenDetail(a, fromAppr) {
@@ -10042,7 +10306,6 @@ function renderAbsenDetail(a, fromAppr) {
   go('s-adet');
   hydrateFaces();
   if (a.latitude != null && a.longitude != null) setTimeout(function() { buildDetMap(a); }, 80);
-  if (a._fotoDisplayUrl) setTimeout(function () { paintMobileAttendanceEvidence(a, a._fotoDisplayUrl, false); }, 0);
 }
 
 function actAbsen(id, approve) {
@@ -10508,6 +10771,14 @@ Object.assign(window, {
   rhIsHybridUser: rhIsHybridUser,
   syncReimbursementMenuVisibility: syncReimbursementMenuVisibility,
   reimbursementMoney: reimbursementMoney,
+  // Bridge reimbursement approval helpers from the module scope to the classic desktop console.
+  // Without these explicit exports, desktop callbacks resolve an undeclared identifier and
+  // trigger the global generic-error toast on page activation/reload.
+  reimbursementRpc: reimbursementRpc,
+  reimbursementRequestId: reimbursementRequestId,
+  reimbursementCanActApprovalRow: reimbursementCanActApprovalRow,
+  reimbursementDecisionConfirmed: reimbursementDecisionConfirmed,
+  loadMyReimbursementRequests: loadMyReimbursementRequests,
   loadReimbursementPage: loadReimbursementPage,
   paintReimbursementPage: paintReimbursementPage,
   setReimbursementCategory: setReimbursementCategory,
@@ -12039,21 +12310,23 @@ function showHrPlaceholder(title, group, description) {
     return Promise.reject(new Error('loadKaryawanMgr is not available'));
   }
   function refreshBadge() {
-    api('getPendingApprovalsFull', [], 20000).then(function (r) {
-      var value = dashPendingCount(r);
-      var n = value === '—' ? 0 : Number(value);
-      var b = document.getElementById('rkAprBadge');
-      if (b) { b.style.display = n > 0 ? '' : 'none'; b.textContent = n; }
+    // Return a promise so callers can safely await badge refresh after an approval.
+    return Promise.all([
+    window.loadApprovalQueueCanonical().then(function (result) {
+      var data=result&&result.data||{}, n=Number(data.total||0);
+      var b=document.getElementById('rkAprBadge');
+      if(b){b.style.display=n>0?'':'none';b.textContent=n;}
     }).catch(function () {
       var b = document.getElementById('rkAprBadge'); if (b) b.style.display = 'none';
-    });
+    }),
     api('getPendingApprovalTracking', [], 25000).then(function (r) {
       dashCache.pendingTotal = r && r.ok === true ? Number(r.total || 0) : null;
       setDashStat('rkDashStatPending', dashCache.pendingTotal == null ? '—' : dashCache.pendingTotal);
     }).catch(function () {
       dashCache.pendingTotal = null;
       setDashStat('rkDashStatPending', '—');
-    });
+    })
+    ]);
   }
 
   /* ---------------- Grafik SVG ringan (tanpa dependensi baru) ---------------- */
@@ -12108,7 +12381,7 @@ function showHrPlaceholder(title, group, description) {
       if (el2 && cur === 'dash' && el2.dataset.filled === '1') paintDash(el2);
     });
     Promise.all([
-      api('getPendingApprovalsFull', [], 20000).catch(function () { return null; }),
+      window.loadApprovalQueueCanonical().then(function (result) { return result && result.data || null; }).catch(function () { return null; }),
       rpcOptional('hr_get_employee_directory', {}).catch(function () { return null; })
     ]).then(function (rs) {
       dashCache.ap = rs[0] || dashCache.ap || null;
@@ -14211,18 +14484,39 @@ function showHrPlaceholder(title, group, description) {
 
   var myApprovalUI={rows:[],selected:Object.create(null),loading:false,batchReport:null};
   function myApprovalKey(kind,id){return String(kind)+'|'+String(id);}
-  function renderMyApprovalsPage(){
+function renderMyApprovalsPage(){
     var el=document.getElementById('rkp-my-approvals');if(!el)return Promise.resolve(null);
-    el.innerHTML='<section class="rk-card rk-approval-personal"><div class="rk-section-head"><div><h2>Pending Approval Anda</h2><p class="rk-card-sub">Pilih pengajuan yang menjadi kewenangan Anda. Persetujuan massal diproses satu per satu dengan hasil masing-masing.</p></div></div><div id="rkMyApprovalActions"><div class="rk-loading">Memuat tugas pribadi...</div></div></section><section class="rk-card rk-approval-monitor" style="margin-top:18px"><div class="rk-section-head"><div><h2>Semua Pending Approval</h2><p class="rk-card-sub">Pemantauan lintas karyawan. Bagian ini hanya untuk melihat, tanpa tombol persetujuan.</p></div></div><div id="rkp-pending"><div class="rk-loading">Memuat pemantauan...</div></div></section>';
+    el.innerHTML='<section class="rk-card rk-approval-personal"><div class="rk-section-head"><div><h2>Pending Approval Anda</h2><p class="rk-card-sub">Pengajuan yang menunggu tindakan Anda.</p></div></div><div id="rkMyApprovalActions"><div class="rk-loading">Memuat tugas pribadi...</div></div></section><section class="rk-card rk-approval-monitor" style="margin-top:18px"><div class="rk-section-head"><div><h2>Semua Pending Approval</h2><p class="rk-card-sub">Pemantauan pengajuan seluruh karyawan.</p></div></div><div id="rkp-pending"><div class="rk-loading">Memuat pemantauan...</div></div></section>';
     myApprovalUI.rows=[];myApprovalUI.selected=Object.create(null);
-    var monitoringPromise=isHR()?renderPendingTrackingPage():Promise.resolve((document.getElementById('rkp-pending')||{}).innerHTML='<div class="rk-empty">Pemantauan seluruh pengajuan tersedia untuk HR, Admin, dan Superadmin.</div>');
-    return Promise.all([api('getPendingApprovalsFull',[],25000),rpcOptional('hr_get_pending_reimbursement_approvals',{}),monitoringPromise]).then(function(result){
-      var queue=result[0]||{},abs=queue.absensi||[],cut=queue.cuti||[],reim=result[1]&&(result[1].requests||result[1].records)||[];
+    if(isHR()){
+      var monitorLoad=renderPendingTrackingPage();
+      if(monitorLoad&&typeof monitorLoad.catch==='function')monitorLoad.catch(function(error){
+        var monitor=document.getElementById('rkp-pending');
+        if(monitor&&(!monitor.textContent||/Memuat/.test(monitor.textContent)))monitor.innerHTML='<div class="rk-empty">Pemantauan belum dapat dimuat: '+escH(error&&error.message||error)+'</div>';
+      });
+    }else{
+      var monitor=document.getElementById('rkp-pending');
+      if(monitor)monitor.innerHTML='<div class="rk-empty">Pemantauan seluruh pengajuan tersedia untuk HR, Admin, dan Superadmin.</div>';
+    }
+    return window.loadApprovalQueueCanonical().then(function(result){
+      var queue=result&&result.data||{},errors=result&&result.errors||{};
+      var abs=Array.isArray(queue.absensi)?queue.absensi:[],cut=Array.isArray(queue.cuti)?queue.cuti:[],reim=Array.isArray(queue.reimbursement)?queue.reimbursement:[];
       abs.forEach(function(x){if(desktopCanActApprovalRow('absen',x))myApprovalUI.rows.push({kind:'absen',id:x.id||x.absensiId||x.requestId,row:x});});
       cut.forEach(function(x){if(desktopCanActApprovalRow('cuti',x))myApprovalUI.rows.push({kind:'cuti',id:x.id||x.cutiId||x.requestId,row:x});});
-      reim.forEach(function(x){myApprovalUI.rows.push({kind:'reimbursement',id:x.id||x.request_id,row:x});});
-      aprCache.absensi=abs.slice();aprCache.cuti=cut.slice();aprCache.at=Date.now();paintMyApprovalsPage();return myApprovalUI.rows;
-    }).catch(function(e){var actions=document.getElementById('rkMyApprovalActions');if(actions)actions.innerHTML='<div class="rk-empty">Gagal memuat tugas persetujuan: '+escH(e&&e.message||e)+'</div>';return null;});
+      reim.forEach(function(x){var id=reimbursementRequestId(x);if(id&&reimbursementCanActApprovalRow(x,S.user))myApprovalUI.rows.push({kind:'reimbursement',id:id,row:x});});
+      aprCache.absensi=abs.slice();aprCache.cuti=cut.slice();aprCache.at=Date.now();
+      paintMyApprovalsPage();
+      var actions=document.getElementById('rkMyApprovalActions'),messages=[];
+      if(errors.core)messages.push('Presensi/Time Off: '+errors.core);
+      if(errors.reimbursement)messages.push('Reimbursement: '+errors.reimbursement);
+      if(messages.length&&actions){
+        var note=document.createElement('div');note.className='rk-empty';note.style.marginBottom='10px';
+        note.innerHTML='<b>Sebagian antrean belum berhasil dimuat.</b><br>'+messages.map(escH).join('<br>')+'<br><button type="button" class="rk-btn ghost" id="rkMyApprovalRetry" style="margin-top:8px">Muat Ulang</button>';
+        actions.insertBefore(note,actions.firstChild);
+        var retry=document.getElementById('rkMyApprovalRetry');if(retry)retry.addEventListener('click',renderMyApprovalsPage);
+      }
+      return myApprovalUI.rows;
+    });
   }
   function myApprovalBatchReportHtml(){
     var report=myApprovalUI.batchReport;if(!report)return '';
@@ -14268,7 +14562,7 @@ function showHrPlaceholder(title, group, description) {
         if(!item)throw new Error('Pengajuan tidak lagi tersedia.');
         if(kind==='absen'){if(!desktopCanActApprovalRow('absen',item.row))throw new Error('Tahap approval berubah atau bukan tugas Anda.');await api('processApproval',[S.user.role,S.user.nik,id,'APPROVE',''],25000);}
         else if(kind==='cuti'){if(!desktopCanActApprovalRow('cuti',item.row))throw new Error('Tahap approval berubah atau bukan tugas Anda.');await api('processCutiApproval',[S.user.role,S.user.nik,id,'APPROVE',''],25000);}
-        else if(kind==='reimbursement'){var ar=await rpcOptional('process_reimbursement_approval',{p_id:id,p_action:'APPROVE',p_alasan:''});if(!ar||ar.ok===false){var sync=await rkResyncReimbursementQueue(id);if(!(sync&&!sync.stillPending))throw new Error((ar&&ar.message)||'Persetujuan reimbursement gagal.');}}
+        else if(kind==='reimbursement'){if(!reimbursementCanActApprovalRow(item.row,S.user))throw new Error('Tahap approval berubah atau tugas ini bukan milik Anda.');var ar;try{ar=await reimbursementRpc('process_reimbursement_approval',{p_id:id,p_action:'APPROVE',p_alasan:''},45000);if(!ar||ar.ok===false)throw new Error((ar&&ar.message)||'Backend belum mengonfirmasi keputusan.');}catch(actionError){var confirmed=false;try{confirmed=await reimbursementDecisionConfirmed(id,'APPROVE');}catch(verifyError){}if(!confirmed)throw actionError;}}
         success.push({id:id,kind:kind});
       }catch(e){failed.push({id:id,kind:kind,message:e&&e.message||String(e)});}
     }
@@ -14285,41 +14579,32 @@ function showHrPlaceholder(title, group, description) {
     window.__rhReimActInflight=window.__rhReimActInflight||{};
     if(window.__rhReimActInflight[id]){rkToast('Permintaan sedang diproses. Tunggu hingga selesai.');return;}
     window.__rhReimActInflight[id]=true;
-    rpcOptional('process_reimbursement_approval',{p_id:id,p_action:action,p_alasan:note}).then(function(r){if(!r||r.ok===false)throw new Error((r&&r.message)||'Persetujuan reimbursement gagal.');rkToast(r.message||(action==='APPROVE'?'Reimbursement disetujui.':'Reimbursement ditolak.'));return renderMyApprovalsPage();}).catch(function(e){
-      return rkResyncReimbursementQueue(id).then(function(sync){
-        if(sync&&!sync.stillPending){rkToast('Keputusan sudah tersimpan di server. Antrean disegarkan.');return renderMyApprovalsPage();}
-        rkToast(e&&e.message||'Persetujuan reimbursement gagal.');
-      });
+    var item=(myApprovalUI.rows||[]).find(function(x){return x.kind==='reimbursement'&&String(x.id)===String(id);});
+    if(!item||!reimbursementCanActApprovalRow(item.row,S.user)){delete window.__rhReimActInflight[id];rkToast('Tahap persetujuan berubah atau tugas ini bukan milik Anda.');return;}
+    reimbursementRpc('process_reimbursement_approval',{p_id:id,p_action:action,p_alasan:note},45000).then(function(r){if(!r||r.ok===false)throw new Error((r&&r.message)||'Backend belum mengonfirmasi keputusan.');rkToast(r.message||(action==='APPROVE'?'Reimbursement disetujui.':'Reimbursement ditolak.'));return renderMyApprovalsPage();}).catch(async function(e){
+      var confirmed=false;try{confirmed=await reimbursementDecisionConfirmed(id,action);}catch(syncError){console.warn('[ReHolz] Status keputusan belum dapat diverifikasi:',syncError&&syncError.message||syncError);}
+      try{await rkResyncReimbursementQueue(id);}catch(syncError){}
+      if(confirmed){rkToast('Keputusan terverifikasi tersimpan di server. Antrean disegarkan.');return renderMyApprovalsPage();}
+      rkToast((e&&e.message||'Persetujuan reimbursement gagal.')+' Status belum dapat dipastikan sebagai keputusan Anda. Muat ulang antrean sebelum mencoba lagi.');
     }).finally(function(){delete window.__rhReimActInflight[id];});
   }
   function renderAprPage(force) {
-    var el = document.getElementById('rkp-apr');
-    if (!el) return Promise.resolve(null);
-    if (!force && aprCache.at && (Date.now() - aprCache.at) < 30000 && el.dataset.filled === '1') return Promise.resolve({ absensi: aprCache.absensi || [], cuti: aprCache.cuti || [] });
-    el.innerHTML = '<div class="rk-loading">Memuat daftar persetujuan...</div>';
-    return api('getPendingApprovalsFull', [], 25000).then(function (r) {
-      aprCache.at = Date.now();
-      el.dataset.filled = '1';
-      var abs = (r && r.absensi) || [];
-      var cut = (r && r.cuti) || [];
-      aprCache.absensi = abs.slice();
-      aprCache.cuti = cut.slice();
-      var h = '';
-      h += '<div class="rk-card" style="margin-bottom:16px"><h3>Presensi Menunggu Persetujuan (' + abs.length + ')</h3><div class="rk-card-sub">Pengajuan presensi yang menunggu persetujuan</div>';
-      h += abs.length ? abs.map(function (x) { return aprItem(x, 'absen'); }).join('') : '<div class="rk-empty">Tidak ada pengajuan presensi yang menunggu persetujuan.</div>';
-      h += '</div>';
-      h += '<div class="rk-card"><h3>Time Off & Izin Menunggu Persetujuan (' + cut.length + ')</h3><div class="rk-card-sub">Pengajuan Time Off yang menunggu persetujuan</div>';
-      h += cut.length ? cut.map(function (x) { return aprItem(x, 'cuti'); }).join('') : '<div class="rk-empty">Tidak ada pengajuan Time Off yang menunggu persetujuan.</div>';
-      h += '</div>';
-      el.innerHTML = h;
-      try { hydrateFaces(); } catch (e) {}
-      return r;
-    }).catch(function (e) {
-      el.innerHTML = '<div class="rk-empty">Gagal memuat data: ' + escH(e && e.message || e) + '</div>';
-      return null;
-    });
+    var el=document.getElementById('rkp-apr');if(!el)return Promise.resolve(null);
+    if(!force&&aprCache.at&&(Date.now()-aprCache.at)<30000&&el.dataset.filled==='1')return Promise.resolve({absensi:aprCache.absensi||[],cuti:aprCache.cuti||[]});
+    el.innerHTML='<div class="rk-loading">Memuat daftar persetujuan...</div>';
+    return window.loadApprovalQueueCanonical().then(function(result){
+      var queue=result&&result.data||{};
+      var abs=Array.isArray(queue.absensi)?queue.absensi:[],cut=Array.isArray(queue.cuti)?queue.cuti:[];
+      aprCache.at=Date.now();el.dataset.filled='1';aprCache.absensi=abs.slice();aprCache.cuti=cut.slice();
+      var html='<div class="rk-card" style="margin-bottom:16px"><h3>Presensi Menunggu Persetujuan ('+abs.length+')</h3>';
+      html+=abs.length?abs.map(function(x){return aprItem(x,'absen');}).join(''):'<div class="rk-empty">Tidak ada pengajuan presensi yang menunggu persetujuan.</div>';
+      html+='</div><div class="rk-card"><h3>Time Off &amp; Izin Menunggu Persetujuan ('+cut.length+')</h3>';
+      html+=cut.length?cut.map(function(x){return aprItem(x,'cuti');}).join(''):'<div class="rk-empty">Tidak ada pengajuan Time Off.</div>';
+      html+='</div>';el.innerHTML=html;
+      try{hydrateFaces();}catch(e){}
+      return {absensi:abs,cuti:cut};
+    }).catch(function(error){el.innerHTML='<div class="rk-empty">Gagal memuat data: '+escH(error&&error.message||error)+'</div>';return null;});
   }
-
   function desktopCanActAsDirectManager(role, row, kind) {
     role = String(role || '').toUpperCase();
     row = row || {};
@@ -14353,6 +14638,7 @@ function showHrPlaceholder(title, group, description) {
     if (!row || !S.user) return false;
     var role = String(S.user.role || '').toUpperCase();
     if (role === 'ADMIN') return false;
+    if (kind === 'reimbursement') return reimbursementCanActApprovalRow(row,S.user);
     if (kind === 'cuti') {
       var managerStatus = String(row.statusAtasan || row.status_atasan || 'PENDING').toUpperCase();
       var finalStatus = String(row.statusHR || row.status_hr || 'PENDING').toUpperCase();
@@ -14378,7 +14664,7 @@ function showHrPlaceholder(title, group, description) {
     var alasan = isRejected ? (kind === 'absen' ? (x.alasanApprovalHR || x.alasanApprovalAtasan || x.alasanApproval || '') : (x.alasanAtasan || x.alasanHR || '')) : '';
     var _av = x.faceVer || (DATA.faceVer || {})[nik] || 0;
     var ava = nik ? '<span class="rk-ava"' + faceWrap(nik, nama, _av) + '>' + avaHtml(nik, nama, _av) + '</span>' : '';
-    var canAct = kind==='reimbursement' ? String(S.user&&S.user.role||'').toUpperCase()!=='ADMIN' : desktopCanActApprovalRow(kind, x);
+    var canAct = kind==='reimbursement' ? reimbursementCanActApprovalRow(x,S.user) : desktopCanActApprovalRow(kind, x);
     var stageText = kind === 'absen'
       ? (String(x.statusApproval || x.status_approval || '').toUpperCase() === 'PENDING_ATASAN' ? 'Menunggu persetujuan atasan langsung' : 'Menunggu persetujuan Superadmin')
       : (kind==='reimbursement' ? (String(x.pending_stage||'ATASAN').toUpperCase()==='HR'?'Menunggu persetujuan Superadmin':'Menunggu persetujuan atasan langsung') : (/^PENDING\//.test(rowStatus) ? 'Menunggu persetujuan atasan langsung' : (/^(DISETUJUI|APPROVED)\/PENDING$/.test(rowStatus) ? 'Menunggu persetujuan Superadmin' : rowStatus)));
@@ -14400,109 +14686,59 @@ function showHrPlaceholder(title, group, description) {
     if(String(S.user&&S.user.role||'').toUpperCase()==='ADMIN'&&!viewOnly){rkToast('Administrator hanya dapat memantau pengajuan.');return;}
     var shade=document.getElementById('rkReimbursementDetailShade');
     if(!shade){
-      shade=document.createElement('div');shade.id='rkReimbursementDetailShade';shade.className='rk-cuti-detail-shade';
-      shade.innerHTML='<section class="rk-cuti-detail-modal" role="dialog" aria-modal="true" aria-labelledby="rkReimbursementDetailTitle"><button type="button" class="rk-dash-modal-close" data-reim-detail-close aria-label="Tutup">×</button><div id="rkReimbursementDetailContent"></div></section>';
+      shade=document.createElement('div');shade.id='rkReimbursementDetailShade';shade.className='rk-cuti-detail-shade rh-reim-detail-shade';
+      shade.innerHTML='<section class="rk-cuti-detail-modal rh-reim-detail-modal" role="dialog" aria-modal="true" aria-labelledby="rkReimbursementDetailTitle"><button type="button" class="rk-dash-modal-close" data-reim-detail-close aria-label="Tutup">×</button><div id="rkReimbursementDetailContent"></div></section>';
       document.body.appendChild(shade);
       shade.addEventListener('click',function(ev){
         if(ev.target===shade||(ev.target.closest&&ev.target.closest('[data-reim-detail-close]'))){shade.classList.remove('on');return;}
         var action=ev.target.closest&&ev.target.closest('[data-reim-detail-action]');
-        if(action)submitDesktopReimbursementAction(shade.dataset.requestId,action.getAttribute('data-reim-detail-action'));
+        if(action&&!action.disabled)submitDesktopReimbursementAction(shade.dataset.requestId,action.getAttribute('data-reim-detail-action'));
       });
       shade.addEventListener('keydown',function(ev){if(ev.key==='Escape')shade.classList.remove('on');});
     }
     shade.dataset.requestId=String(id);
-    var person=empFind(row.employee_id||'')||empNormalize({employee_id:row.employee_id||'',nama:row.employee_name||''});
-    var cat=String(row.category||'').toUpperCase()==='ENTERTAIN'?'Entertain':'Transport';
-    var amount=Number(row.amount||0),over=Math.max(0,Number(row.over_budget_amount||0)),within=Math.max(0,amount-over);
-    var status=String(row.status||'PENDING_ATASAN').toUpperCase();
-    var pendingHr=String(row.pending_stage||'ATASAN').toUpperCase()==='HR';
-    var managerName=String(row.manager_approver_name||row.approval_line_name||person.atasanNama||'Atasan langsung');
-    var hrName=String(row.hr_approver_name||'Superadmin');
-    var created= row.created_at ? new Date(row.created_at).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : '—';
-    var managerAt=row.manager_approval_at?new Date(row.manager_approval_at).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}):'';
-    var hrAt=row.hr_approval_at?new Date(row.hr_approval_at).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}):'';
-    var stages='<div class="rk-cuti-status-timeline rk-cuti-timeline-up">'+
-      '<div class="rk-cuti-stage '+(status==='PENDING_HR'?'pending':'waiting')+'"><span class="rk-cuti-stage-dot"></span><div class="rk-cuti-stage-content"><b>'+(status==='PENDING_HR'?'Menunggu persetujuan Superadmin':'Tahap Superadmin')+'</b>'+(hrAt?'<small class="rk-cuti-stage-time">'+escH(hrAt)+' · '+escH(hrName)+'</small>':'')+(row.hr_note?'<p class="rk-cuti-stage-note"><span>Catatan:</span> '+escH(row.hr_note)+'</p>':'')+'</div></div>'+
-      '<div class="rk-cuti-timeline-arrow"><span>↑</span></div>'+
-      '<div class="rk-cuti-stage '+(status==='PENDING_ATASAN'?'pending':'done')+'"><span class="rk-cuti-stage-dot"></span><div class="rk-cuti-stage-content"><b>'+(status==='PENDING_ATASAN'?'Menunggu persetujuan atasan langsung':'Tahap atasan langsung')+'</b>'+(managerAt?'<small class="rk-cuti-stage-time">'+escH(managerAt)+' · '+escH(managerName)+'</small>':'')+(row.manager_note?'<p class="rk-cuti-stage-note"><span>Catatan:</span> '+escH(row.manager_note)+'</p>':'')+'</div></div>'+
-      '<div class="rk-cuti-timeline-arrow"><span>↑</span></div>'+
-      '<div class="rk-cuti-stage done"><span class="rk-cuti-stage-dot"></span><div class="rk-cuti-stage-content"><b>Diajukan oleh '+escH(row.employee_name||row.employee_id||'Karyawan')+'</b><small class="rk-cuti-stage-time">'+escH(created)+'</small></div></div></div>';
-    var canAct=!viewOnly&&((status==='PENDING_ATASAN'&&!pendingHr)||(status==='PENDING_HR'&&String(S.user&&S.user.role||'').toUpperCase()==='SUPERADMIN'));
-    var content='<div class="rk-cuti-detail-header"><h2 id="rkReimbursementDetailTitle">Informasi Pengajuan Reimbursement</h2></div><div class="rk-cuti-detail-layout">'+
-      '<section class="rk-cuti-attachment-panel" aria-label="Pratinjau nota"><div id="rkReimbursementInlinePreview" class="rk-cuti-inline-preview"><div class="rk-cuti-preview-message">Memuat nota transaksi…</div></div><p class="rk-cuti-open-file" id="rkReimbursementOpenFile"></p></section>'+
-      '<section class="rk-cuti-detail-main"><div class="rk-cuti-detail-person">'+empAvatarMarkup(person,true)+'<div class="rk-cuti-person-main"><b>'+escH(row.employee_name||person.nama||'—')+'</b><small>'+escH(row.employee_id||'')+' · '+escH(person.job_code||person.jobCode||'HYBRID')+'</small></div></div>'+
-      '<div class="rk-cuti-contact-strip"><div><span class="rk-cuti-contact-icon">⌂</span><span>'+escH(person.branch||person.cabang||'—')+'</span></div><div><span class="rk-cuti-contact-icon">✉</span><span>'+escH(person.email||person.emailAddress||'—')+'</span></div><div><span class="rk-cuti-contact-icon">☎</span><span>'+escH(person.phone||person.phoneNumber||'—')+'</span></div></div>'+
-      '<div class="rk-cuti-request-fields">'+empField('ID Pengajuan',row.id||id)+empField('Jenis',cat)+empField('Tanggal pengeluaran',row.request_date||'—')+empField('Tanggal pengajuan',created)+empField('Nominal',incentiveMoney(amount))+empField('Dalam Budget',incentiveMoney(within))+empField('Overbudget',incentiveMoney(over))+empField('Periode',String(row.period_start||'—')+' – '+String(row.period_end||'—'))+'</div>'+
-      '<div class="rk-cuti-detail-block rk-cuti-reason"><label>Catatan / alasan pengeluaran</label><p>'+escH(row.note||'Tidak ada catatan dari karyawan.')+'</p></div>'+
-      '<div class="rk-cuti-detail-block rk-cuti-status-block"><label>Status dan tahapan persetujuan</label>'+stages+'</div>'+
-      (canAct?'<div class="rk-cuti-approval-box rk-cuti-approval-inline"><div class="rk-cuti-approval-input"><label for="rkReimbursementDecisionNote">Catatan keputusan (wajib jika ditolak)</label><textarea id="rkReimbursementDecisionNote" class="rk-in rk-cuti-note" rows="2"></textarea></div><div class="rk-cuti-detail-actions"><button type="button" class="rk-btn" data-reim-detail-action="APPROVE">Setujui</button><button type="button" class="rk-btn danger" data-reim-detail-action="REJECT">Tolak</button></div></div>':'<div class="rk-cuti-detail-wait">'+(viewOnly?'Rincian pengajuan ditampilkan dalam mode lihat; keputusan tetap dilakukan melalui antrean persetujuan.':'Pengajuan tidak berada pada tahap kewenangan akun ini.')+'</div>')+
-      '</section></div>';
-    document.getElementById('rkReimbursementDetailContent').innerHTML=content;
-    shade.classList.add('on');hydrateDesktopEmployeeFaces(shade);
-    var preview=document.getElementById('rkReimbursementInlinePreview'),open=document.getElementById('rkReimbursementOpenFile'),path=reimbursementAttachmentPath(row);
-    if(!path){if(preview)preview.innerHTML='<div class="rk-cuti-preview-message">Tidak ada lampiran transaksi.</div>';return;}
-    if(preview)preview.innerHTML='<div class="rk-cuti-preview-message"><span class="spin"></span><div style="margin-top:10px">Memuat nota transaksi…</div></div>';
-    api('getReimbursementSignedUrls',[[path]],30000).then(function(batch){
-      if(!shade.isConnected||String(shade.dataset.requestId)!==String(id))return;
-      var signedList=batch&&(batch.signedUrls||batch.signed_urls||batch.data)||[];if(!Array.isArray(signedList))signedList=[];var signed=signedList.find(function(v){return String(v.path||v.storage_path||'')===path;})||signedList[0];
-      if(!signed||!signed.signedUrl)throw new Error('Tautan nota belum tersedia.');
-      var url=String(signed.signedUrl),mime=String(row.attachment_mime||row.mime_type||row.content_type||row.file_mime||'').toLowerCase();
-      var isPdf=mime==='application/pdf'||/\.pdf(?:$|[?#])/i.test(path);
-      var isImage=mime.indexOf('image/')===0||/\.(png|jpe?g|webp|gif|bmp)(?:$|[?#])/i.test(path);
-      if(preview){
-        preview.innerHTML='';
-        if(isPdf){var frame=document.createElement('iframe');frame.className='rk-cuti-preview-pdf';frame.title='Nota Reimbursement PDF';frame.src=url+'#toolbar=1&navpanes=0';preview.appendChild(frame);}
-        else {
-          var img=document.createElement('img');img.className='rk-cuti-preview-image';img.alt='Nota Reimbursement';
-          var imageRetried=false;
-          img.onerror=function(){
-            if(!imageRetried){imageRetried=true;api('getReimbursementSignedUrls',[[path]],30000).then(function(freshBatch){var freshList=freshBatch&&(freshBatch.signedUrls||freshBatch.signed_urls||freshBatch.data)||[];if(!Array.isArray(freshList))freshList=[];var fresh=freshList.find(function(v){return String(v.path||v.storage_path||'')===path;})||freshList[0];if(!fresh||!fresh.signedUrl)throw new Error('Tautan bukti tidak tersedia.');url=String(fresh.signedUrl);if(img.isConnected)img.src=url;if(open)open.innerHTML='<a href="'+escH(url)+'" target="_blank" rel="noopener noreferrer">Buka nota transaksi ↗</a>';}).catch(function(){if(preview.isConnected)preview.innerHTML='<div class="rk-cuti-preview-message">Foto nota tidak dapat dibaca. Gunakan tautan Buka nota.</div>';});return;}
-            if(!isImage&&!isPdf){preview.innerHTML='';var fallback=document.createElement('iframe');fallback.className='rk-cuti-preview-pdf';fallback.title='Nota Reimbursement PDF';fallback.src=url+'#toolbar=1&navpanes=0';preview.appendChild(fallback);}
-            else preview.innerHTML='<div class="rk-cuti-preview-message">Foto nota tidak dapat dibaca. Gunakan tautan Buka nota.</div>';
-          };
-          img.src=url;preview.appendChild(img);
-        }
-      }
-      if(open)open.innerHTML='<a href="'+escH(url)+'" target="_blank" rel="noopener noreferrer">Buka nota transaksi ↗</a>';
-    }).catch(function(err){if(preview)preview.innerHTML='<div class="rk-cuti-preview-message">Nota tidak dapat dipratinjau. '+escH(err&&err.message||'Periksa akses lampiran.')+'</div>';if(open)open.textContent='';});
+    var canAct=!viewOnly&&reimbursementCanActApprovalRow(row,S.user);
+    document.getElementById('rkReimbursementDetailContent').innerHTML=window.buildReimbursementApprovalDetail(row,id,canAct);
+    shade.classList.add('on');
+    window.paintReimbursementAttachmentPreview(row,id,'rhReimProof');
   }
   function submitDesktopReimbursementAction(id,action){
     if(action!=='APPROVE'&&action!=='REJECT'){rkToast('Tindakan persetujuan tidak valid.');return;}
     var item=(myApprovalUI.rows||[]).find(function(x){return x.kind==='reimbursement'&&String(x.id)===String(id);});
     if(!item){rkToast('Pengajuan tidak lagi berada di antrean Anda. Muat ulang.');return;}
-    var row=item.row||{},role=String(S.user&&S.user.role||'').toUpperCase(),status=String(row.status||'').toUpperCase(),stage=String(row.pending_stage||'ATASAN').toUpperCase();
-    if((status==='PENDING_ATASAN'&&stage!=='ATASAN')||(status==='PENDING_HR'&&(role!=='SUPERADMIN'||stage!=='HR'))||role==='ADMIN'){rkToast('Tahap persetujuan telah berubah atau Anda tidak berwenang.');return;}
-    var noteEl=document.getElementById('rkReimbursementDecisionNote'),note=String(noteEl&&noteEl.value||'').trim();
+    var row=item.row||{};
+    if(!reimbursementCanActApprovalRow(row,S.user)){rkToast('Tahap persetujuan telah berubah atau tugas ini bukan milik Anda. Muat ulang antrean.');return;}
+    var noteEl=document.getElementById('rhReimDecisionNote'),note=String(noteEl&&noteEl.value||'').trim();
     if(action==='REJECT'&&!note){rkToast('Catatan penolakan wajib diisi.');if(noteEl)noteEl.focus();return;}
     var shade=document.getElementById('rkReimbursementDetailShade');
     if(shade&&shade.dataset.acting==='1')return;
     if(shade)shade.dataset.acting='1';
     if(shade)Array.prototype.forEach.call(shade.querySelectorAll('[data-reim-detail-action]'),function(btn){btn.disabled=true;btn.dataset.originalLabel=btn.textContent;btn.textContent='Menyimpan…';});
-    rpcOptional('process_reimbursement_approval',{p_id:id,p_action:action,p_alasan:note}).then(function(r){
+    reimbursementRpc('process_reimbursement_approval',{p_id:id,p_action:action,p_alasan:note},45000).then(function(r){
       if(!r||r.ok===false)throw new Error((r&&r.message)||'Backend belum mengonfirmasi keputusan.');
       if(shade)shade.dataset.acting='';
       rkToast(r.message||(action==='APPROVE'?'Reimbursement disetujui.':'Reimbursement ditolak.'));
       if(shade)shade.classList.remove('on');
       aprCache.at=0;RH_NOTIF_STATE.mobileAt=0;RH_NOTIF_STATE.desktopAt=0;
       return Promise.all([renderMyApprovalsPage(),refreshBadge().catch(function(){return null;}),renderDeskNotifications(true).catch(function(){return null;})]);
-    }).catch(function(e){
-      // Respons bisa hilang padahal server sudah memproses. Cek ulang antrean sebelum menyatakan gagal.
-      rkResyncReimbursementQueue(id).then(function(sync){
-        if(shade)shade.dataset.acting='';
-        if(sync&&!sync.stillPending){
-          rkToast('Keputusan sudah tersimpan di server. Antrean persetujuan disegarkan.');
-          if(shade)shade.classList.remove('on');
-          aprCache.at=0;RH_NOTIF_STATE.mobileAt=0;RH_NOTIF_STATE.desktopAt=0;
-          return Promise.all([renderMyApprovalsPage(),refreshBadge().catch(function(){return null;})]);
-        }
-        if(shade)Array.prototype.forEach.call(shade.querySelectorAll('[data-reim-detail-action]'),function(btn){btn.disabled=false;btn.textContent=btn.dataset.originalLabel||(btn.getAttribute('data-reim-detail-action')==='APPROVE'?'Setujui':'Tolak');});
-        rkToast(e&&e.message||'Keputusan Reimbursement gagal disimpan.');
-      });
+    }).catch(async function(e){
+      var confirmed=false;try{confirmed=await reimbursementDecisionConfirmed(id,action);}catch(syncError){console.warn('[ReHolz] Status keputusan belum dapat diverifikasi:',syncError&&syncError.message||syncError);}
+      try{await rkResyncReimbursementQueue(id);}catch(syncError){}
+      if(shade)shade.dataset.acting='';
+      if(confirmed){
+        rkToast('Keputusan terverifikasi tersimpan di server. Antrean disegarkan.');
+        if(shade)shade.classList.remove('on');
+        aprCache.at=0;RH_NOTIF_STATE.mobileAt=0;RH_NOTIF_STATE.desktopAt=0;
+        return Promise.all([renderMyApprovalsPage(),refreshBadge().catch(function(){return null;})]);
+      }
+      if(shade)Array.prototype.forEach.call(shade.querySelectorAll('[data-reim-detail-action]'),function(btn){btn.disabled=false;btn.textContent=btn.dataset.originalLabel||(btn.getAttribute('data-reim-detail-action')==='APPROVE'?'Setujui':'Tolak');});
+      rkToast((e&&e.message||'Keputusan Reimbursement gagal disimpan.')+' Status belum dapat dipastikan sebagai keputusan Anda. Muat ulang antrean sebelum mencoba lagi.');
     });
   }
 
   function rkResyncReimbursementQueue(id){
-    return rpcOptional('hr_get_pending_reimbursement_approvals',{}).then(function(res){
+    return reimbursementRpc('hr_get_pending_reimbursement_approvals',{},30000).then(function(res){
+      if(!res||res.ok===false)throw new Error((res&&res.message)||'Antrean Reimbursement tidak dapat disinkronkan.');
       var rows=res&&(res.requests||res.records||[]);
       if(!Array.isArray(rows))return null;
       var found=false;
@@ -14514,10 +14750,44 @@ function showHrPlaceholder(title, group, description) {
     });
   }
 
+  function syncDesktopAttendanceApprovalMediaLayout(shade) {
+    shade=shade||document.getElementById('rkAttApprovalShade');
+    if(!shade||!shade.classList.contains('on')||!document.body.classList.contains('rh-desk-on'))return;
+    var panel=shade.querySelector('.rk-att-approval-panel');
+    var head=shade.querySelector('.rk-att-approval-head');
+    var layout=shade.querySelector('.rk-att-approval-layout');
+    var visual=shade.querySelector('.rk-att-approval-visual');
+    var body=shade.querySelector('.rk-att-approval-body');
+    if(!panel||!layout||!visual||!body)return;
+    var action=body.querySelector('.rk-att-actions');
+    var bodyTop=body.getBoundingClientRect().top;
+    var contentBottom=action?action.getBoundingClientRect().bottom:bodyTop+body.scrollHeight;
+    var naturalHeight=Math.max(body.scrollHeight,contentBottom-bodyTop);
+    var headHeight=head?head.getBoundingClientRect().height:48;
+    var maxHeight=Math.max(360,window.innerHeight-headHeight-64);
+    var target=Math.max(380,Math.min(naturalHeight,maxHeight));
+    layout.style.height=target+'px';
+    layout.style.maxHeight=maxHeight+'px';
+    visual.style.height='100%';
+    body.style.height=target+'px';
+    body.style.maxHeight=target+'px';
+    body.style.overflowY=naturalHeight>target+2?'auto':'hidden';
+  }
+
   function openDesktopAttendanceDetail(id) {
-    function findRow() { return (aprCache.absensi || []).concat((DATA.myReq && DATA.myReq.absensi) || []).find(function (row) { return String(row.id || row.absensiId || row.requestId || '') === String(id); }); }
+    function findRow() {
+      // DATA.appr is the current canonical queue consumed by both mobile and desktop.
+      // Prefer it to aprCache, which can lag behind after another screen refreshes the queue.
+      var currentQueue = DATA.appr && Array.isArray(DATA.appr.absensi) ? DATA.appr.absensi : [];
+      var ownRows = DATA.myReq && Array.isArray(DATA.myReq.absensi) ? DATA.myReq.absensi : [];
+      var desktopCache = Array.isArray(aprCache.absensi) ? aprCache.absensi : [];
+      return currentQueue.concat(ownRows, desktopCache).find(function (row) {
+        return String(row.id || row.absensiId || row.requestId || '') === String(id);
+      });
+    }
     function show(row) {
       if (!row) { rkToast('Pengajuan absensi tidak ditemukan pada antrean terbaru.'); return; }
+      if (window.normalizeApprovalAttendanceRow) row = window.normalizeApprovalAttendanceRow(row);
       var shade = document.getElementById('rkAttApprovalShade');
       if (!shade) {
         shade = document.createElement('div');
@@ -14569,37 +14839,40 @@ function showHrPlaceholder(title, group, description) {
         '</div></div>';
       document.getElementById('rkAttApprovalContent').innerHTML = html;
       shade.classList.add('on');
+      // Measure the actual detail/action column, then size the left media stack to the same bottom edge.
+      if (!shade.__rhAttendanceResizeBound) {
+        shade.__rhAttendanceResizeBound = true;
+        shade.__rhAttendanceResizeHandler = function(){ window.requestAnimationFrame(function(){ syncDesktopAttendanceApprovalMediaLayout(shade); }); };
+        window.addEventListener('resize', shade.__rhAttendanceResizeHandler);
+      }
+      window.requestAnimationFrame(function(){
+        syncDesktopAttendanceApprovalMediaLayout(shade);
+        window.requestAnimationFrame(function(){ syncDesktopAttendanceApprovalMediaLayout(shade); });
+      });
       try { hydrateFaces(); } catch (_) {}
       var photoBox = document.getElementById('rkAttApprovalPhotoBox');
-      var photoSource = window.attendanceEvidenceSource(row);
-      if (photoBox && photoSource) {
-        photoBox.innerHTML = '<div class="rk-att-photo-empty">Memuat foto bukti presensi…</div>';
-        window.resolveEvidenceDisplayUrl(photoSource).then(function (url) {
-          if (!photoBox.isConnected || String(shade.dataset.requestId) !== String(row.id || id)) return;
-          photoBox.innerHTML = '<img id="rkAttApprovalPhoto" alt="Foto bukti presensi">';
-          var img = photoBox.querySelector('img'); img.src = driveThumb(url);
-          img.onerror = function () {
-            if (!img.dataset.didRefresh) {
-              img.dataset.didRefresh = '1';
-              window.resolveEvidenceDisplayUrl(photoSource, true).then(function (freshUrl) {
-                if (!photoBox.isConnected || String(shade.dataset.requestId) !== String(row.id || id)) return;
-                var retryImg = document.createElement('img'); retryImg.id = 'rkAttApprovalPhoto'; retryImg.alt = 'Foto bukti presensi';
-                retryImg.onerror = function () { photoBox.innerHTML = '<div class="rk-att-photo-empty">Foto bukti presensi tidak dapat dimuat. Coba lagi.</div>'; };
-                retryImg.src = driveThumb(freshUrl); photoBox.innerHTML = ''; photoBox.appendChild(retryImg);
-              }).catch(function () { photoBox.innerHTML = '<div class="rk-att-photo-empty">Foto bukti presensi tidak dapat dimuat.</div>'; });
-            } else photoBox.innerHTML = '<div class="rk-att-photo-empty">Foto bukti presensi tidak dapat dimuat.</div>';
-          };
-        }).catch(function () { if (photoBox.isConnected && String(shade.dataset.requestId) === String(row.id || id)) photoBox.innerHTML = '<div class="rk-att-photo-empty">Foto bukti presensi tidak dapat dimuat.</div>'; });
+      if (photoBox && typeof window.paintAttendanceEvidencePreview === 'function') {
+        // Always use the same renderer as mobile: it either loads the source or
+        // leaves an explicit missing/error state inside the reserved photo cell.
+        window.paintAttendanceEvidencePreview(photoBox, row, {
+          messageClass: 'rk-att-photo-empty', retryClass: 'rk-att-photo-retry',
+          loadingMessage: 'Memuat foto bukti presensi…',
+          missingMessage: 'Foto bukti presensi tidak tersedia.',
+          errorMessage: 'Foto bukti presensi tidak dapat dimuat.',
+          alt: 'Foto bukti presensi',
+          isCurrent: function () { return String(shade.dataset.requestId) === String(row.id || id); }
+        });
       }
     }
     var row = findRow();
     if (row) { show(row); return; }
-    api('getPendingApprovalsFull', [], 20000).then(function (r) {
-      aprCache.absensi = (r && r.absensi) || []; aprCache.cuti = (r && r.cuti) || []; aprCache.at = Date.now();
+    window.loadApprovalQueueCanonical().then(function (result) {
+      var r = result && result.data || {};
+      aprCache.absensi = r.absensi || []; aprCache.cuti = r.cuti || []; aprCache.at = Date.now();
       var current = findRow();
       if (current) { show(current); return; }
       return api('getMyAttendanceRequest', [id], 15000).then(function (ownRow) {
-        if (ownRow && ownRow.id) show(ownRow);
+        if (ownRow && ownRow.id) show(window.normalizeApprovalAttendanceRow ? window.normalizeApprovalAttendanceRow(ownRow) : ownRow);
         else rkToast('Pengajuan absensi tidak ditemukan pada antrean atau riwayat Anda.');
       });
     }).catch(function (e) {
@@ -14617,8 +14890,8 @@ function showHrPlaceholder(title, group, description) {
     if (action === 'REJECT' && !note) { rkToast('Isi catatan penolakan.'); if (noteEl) noteEl.focus(); return; }
     var shade = document.getElementById('rkAttApprovalShade');
     if (shade) Array.prototype.forEach.call(shade.querySelectorAll('[data-att-detail-action]'), function (btn) { btn.disabled = true; btn.dataset.originalLabel = btn.textContent; btn.textContent = 'Menyimpan…'; });
-    api('getPendingApprovalsFull', [], 25000).then(function (queue) {
-      queue = queue || {};
+    window.loadApprovalQueueCanonical().then(function (result) {
+      var queue = result && result.data || {};
       aprCache.absensi = queue.absensi || []; aprCache.cuti = queue.cuti || [];
       var target = aprCache.absensi.find(function (row) { return String(row.id || row.absensiId || row.requestId || '') === String(id); });
       if (!target || !desktopCanActApprovalRow('absen', target)) throw new Error('Tahap persetujuan sudah berubah atau Anda bukan approver yang ditugaskan.');
@@ -14643,8 +14916,8 @@ function showHrPlaceholder(title, group, description) {
     if (action !== 'APPROVE' && action !== 'REJECT') { rkToast('Tindakan persetujuan tidak valid.'); return; }
     // Open the request sheet first. Approval and rejection happen there; Reject requires an inline note,
     // never a native browser prompt or an extra confirmation dialog.
-    api('getPendingApprovalsFull', [], 20000).then(function (queue) {
-      queue = queue || {};
+    window.loadApprovalQueueCanonical().then(function (result) {
+      var queue = result && result.data || {};
       aprCache.absensi = queue.absensi || []; aprCache.cuti = queue.cuti || []; aprCache.at = Date.now();
       var rows = kind === 'cuti' ? aprCache.cuti : aprCache.absensi;
       var target = rows.find(function (row) { return String(row.id || row.cutiId || row.absensiId || row.requestId || '') === String(id); });
@@ -15290,28 +15563,7 @@ function showHrPlaceholder(title, group, description) {
     return '';
   }
   function cutiAttachmentValue(row) {
-    row = row || {};
-    var fileKeys = ['dokumenPath','dokumen_path','document_path','file_path','filePath','attachment_path','attachmentPath','attachment_storage_path','storage_path','storagePath','path','dokumenUrl','dokumen_url','document_url','file_url','fileUrl','attachment_url','attachment','Attachment'];
-    var raw = '';
-    for (var i = 0; i < fileKeys.length; i++) {
-      var value = row[fileKeys[i]];
-      if (value === null || value === undefined) continue;
-      if (typeof value === 'object') value = value.path || value.storage_path || value.storagePath || value.object_path || value.objectPath || value.file_path || value.filePath || value.signedUrl || value.signed_url || value.signedURL || value.url || value.data_url || value.dataUrl || value.base64 || '';
-      if (!cutiIsPlaceholder(value)) { raw = value; break; }
-    }
-    if (cutiIsPlaceholder(raw)) return '';
-    var s = String(raw).trim();
-    if (/^data:/i.test(s) || /^https?:\/\//i.test(s) || s.charAt(0) === '/') return s;
-    var mime = String(cutiRowValue(row,['mime','document_mime','dokumenMime','file_mime','mime_type','content_type']) || '').toLowerCase();
-    // Older rows may contain raw base64 without a data: prefix. Add the prefix only when the content signature is known.
-    if (s.length > 128 && /^[A-Za-z0-9+/=\r\n]+$/.test(s)) {
-      if (/^\/9j\//.test(s)) mime = 'image/jpeg';
-      else if (/^iVBORw0KGgo/.test(s)) mime = 'image/png';
-      else if (/^JVBERi0/.test(s)) mime = 'application/pdf';
-      else if (/^R0lGOD/.test(s)) mime = 'image/gif';
-      if (/^(image\/(jpeg|png|gif|webp)|application\/pdf)$/.test(mime)) return 'data:' + mime + ';base64,' + s.replace(/\s/g,'');
-    }
-    return s;
+    return window.approvalTimeOffAttachmentValue ? window.approvalTimeOffAttachmentValue(row || {}) : '';
   }
   function cutiAttachmentExportValue(row) {
     var value = cutiAttachmentValue(row);
@@ -15380,7 +15632,7 @@ function showHrPlaceholder(title, group, description) {
     if (body) body.innerHTML = '<tr><td colspan="7"><div class="rk-loading">Memuat data Time Off…</div></td></tr>';
     var req = Promise.all([
       rpcOptional('hr_get_leave_list_v2', { p_year: cutiUI.y }).then(function(r){ return normArr(r); }),
-      api('getPendingApprovalsFull', [], 25000).catch(function(){ return null; })
+      window.loadApprovalQueueCanonical().then(function(result){return result&&result.data||null;}).catch(function(){ return null; })
     ]).then(function(results){
       var baseRows = Array.isArray(results[0]) ? results[0] : null;
       var queue = results[1] && Array.isArray(results[1].cuti) ? results[1].cuti : [];
@@ -15549,7 +15801,7 @@ function showHrPlaceholder(title, group, description) {
     shade.dataset.requestId=x.id;
     var nik=String(x.nik||'').trim(), person=empFind(nik)||empNormalize({employee_id:nik,nama:x.nama||''});
     var file=cutiAttachmentValue(x);
-    var mime=String(cutiRowValue(x,['mime','document_mime','dokumenMime','file_mime','mime_type','content_type'])||'').toLowerCase();
+    var mime=String(window.approvalTimeOffAttachmentMime ? window.approvalTimeOffAttachmentMime(x,file) : cutiRowValue(x,['mime','document_mime','dokumenMime','file_mime','mime_type','content_type'])||'').toLowerCase();
     var actionStage=desktopCutiActionStage(x);
     var canAct=!!actionStage;
     var managerStatus=String(x.statusAtasan||'PENDING').toUpperCase();
@@ -17981,20 +18233,15 @@ function renderIncentiveFormulaPage(){
           : Promise.resolve(DATA.myReq || { absensi: [], cuti: [] }));
     // S.approver includes KARYAWAN users with subordinates, ADMIN and SUPERADMIN; ordinary employees avoid this extra request.
     var approvalPromise = S.approver
-      ? Promise.all([
-          api('getPendingApprovalsFull', [], 20000).catch(function () { return null; }),
-          reimbursementRpc('hr_get_pending_reimbursement_approvals',{}).catch(function(){return {requests:[]};})
-        ]).catch(function(){return [null,{requests:[]}];})
-      : Promise.resolve([null,{requests:[]}]);
+      ? window.loadApprovalQueueCanonical().then(function(result){return result&&result.data||DATA.appr||{};}).catch(function(){return DATA.appr||{};})
+      : Promise.resolve({});
     var outcomePromise = api('getMyNotifications', [], 20000).catch(function () { return { list: [], unreadCount: null, _failed: true }; });
     var reimbursementHistoryPromise=loadMyReimbursementRequests();
     return Promise.all([requestPromise, approvalPromise, outcomePromise, reimbursementHistoryPromise]).then(function (results) {
       var requests = results[0] || DATA.myReq || {};
-      var approvals = results[1] && results[1][0] || {};
-      var reimbursementApprovals=results[1]&&results[1][1]||{};
+      var approvals = results[1] || {};
+      var reimApprovalRows=Array.isArray(approvals.reimbursement)?approvals.reimbursement:[];
       var reimbursementRows=Array.isArray(results[3])?results[3]:[];
-      var reimApprovalRows=Array.isArray(reimbursementApprovals)?reimbursementApprovals:(reimbursementApprovals.requests||reimbursementApprovals.records||[]);
-      if(!Array.isArray(reimApprovalRows))reimApprovalRows=[];
       var outcomeResult = results[2] || {};
       var outcomes = Array.isArray(outcomeResult) ? outcomeResult : (outcomeResult.list || outcomeResult.notifications || []);
       deskNotifTimeOffRows = Object.create(null); deskNotifAttendanceRows = Object.create(null);
@@ -19445,6 +19692,7 @@ body.rh-desk-on .rk-cuti-detail-actions button:disabled {
   body.rh-desk-on .rk-att-map-link { position:absolute; left:10px; bottom:10px; padding:6px 9px; border-radius:6px; background:#fff; color:#087A4B; box-shadow:0 1px 5px #0002; font-size:11px; text-decoration:none; }
   body.rh-desk-on .rk-att-map-empty, body.rh-desk-on .rk-att-photo-empty { height:100%; min-height:190px; display:flex; justify-content:center; align-items:center; padding:20px; color:#78877E; font-size:12px; text-align:center; }
   body.rh-desk-on .rk-att-approval-photo img { display:block; width:100%; height:100%; min-height:190px; object-fit:contain; background:#EEF2F0; }
+  body.rh-desk-on .rk-att-photo-retry { display:inline-flex; align-items:center; justify-content:center; border:1px solid #C9D8CE; border-radius:6px; background:#FFFFFF; color:#087A4B; padding:7px 10px; font-size:11px; font-weight:650; cursor:pointer; }
   body.rh-desk-on .rk-att-approval-body { overflow:auto; padding:16px 18px 20px; max-height:calc(100vh - 100px); }
   body.rh-desk-on .rk-att-person { display:flex; align-items:center; gap:12px; padding-bottom:13px; margin-bottom:12px; border-bottom:1px solid #DDE6DF; }
   body.rh-desk-on .rk-att-person > div:not(.rk-emp-related-avatar):not(.rk-att-avatar-fallback) { display:flex; flex:1; min-width:0; flex-direction:column; gap:4px; }
@@ -19679,5 +19927,390 @@ body.rh-desk-on .rk-cuti-detail-actions button:disabled {
 .rh-mobile-file-preview{box-sizing:border-box;width:100%;min-height:48px;padding:8px;border:1px solid var(--line,#dce6df);border-radius:10px;background:#fff;overflow:hidden}
 .rh-mobile-file-message{padding:12px;color:var(--txt-muted,#65736b);font-size:12px;line-height:1.45;text-align:center}
 #cdetFileOpen{font-size:12px}
+</style>
+
+<style id="rh-stage2-reimbursement-unified-detail-v58">
+.rh-reim-approval-detail{width:100%;background:#fff;color:var(--txt,#1e2b23);}
+.rh-reim-evidence-hero{position:relative;display:flex;align-items:center;justify-content:center;min-height:176px;max-height:420px;overflow:hidden;background:#E8F1EB;border-bottom:1px solid #E2EAE4;}
+.rh-reim-evidence-hero.has-attachment{background:#F5F8F5;}
+.rh-reim-evidence{display:flex;align-items:center;justify-content:center;width:100%;min-height:176px;max-height:420px;overflow:hidden;}
+.rh-reim-proof-state{width:100%;padding:28px 16px;color:#718077;text-align:center;font-size:12px;line-height:1.45;}
+.rh-reim-proof-image{display:block;width:100%;height:auto;max-height:420px;object-fit:contain;background:#F7F9F7;}
+.rh-reim-proof-frame{display:block;width:100%;height:390px;border:0;background:#fff;}
+.rh-reim-proof-media{display:block;width:100%;max-height:390px;background:#111;}
+.rh-reim-status-pill{position:absolute!important;left:12px;top:12px;right:auto;transform:none!important;z-index:3;max-width:calc(100% - 24px);white-space:normal;}
+.rh-reim-detail-body{padding:18px 18px 24px;background:#fff;}
+.rh-reim-requester{padding-bottom:4px;border-bottom:1px solid #EDF2EE;margin-bottom:16px;}
+.rh-reim-requester small{font-weight:700;color:#345C46;letter-spacing:.01em;}
+.rh-reim-requester>div:first-of-type b{font-size:16px;line-height:1.35;}
+.rh-reim-requester .sub{margin-top:3px;font-size:12px;color:#718077;}
+.rh-reim-overbudget{padding:11px 12px;border:1px solid #E5EAE6;border-radius:10px;background:#F8FAF8;}
+.rh-reim-overbudget.is-overbudget{border-color:#E8B66D;background:#FFF7EA;color:#8E4D08;}
+.rh-reim-overbudget small{font-weight:700;}
+.rh-reim-overbudget strong{font-size:16px;font-weight:800;}
+.rh-reim-decision{margin-top:18px;padding-top:14px;border-top:1px solid #EDF2EE;}
+.rh-reim-decision>label{display:block;margin-bottom:7px;color:#425B4B;font-size:12px;font-weight:700;}
+.rh-reim-decision textarea{box-sizing:border-box;width:100%;min-height:66px;padding:10px 12px;border:1px solid #D8E4DB;border-radius:10px;background:#fff;color:#24372B;font:inherit;resize:vertical;}
+.rh-reim-actions{display:flex;gap:10px;margin-top:12px;}
+.rh-reim-actions button{display:flex;flex:1;align-items:center;justify-content:center;min-height:46px;border:0;border-radius:9px;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;}
+.rh-reim-actions button:disabled{opacity:.65;cursor:wait;}
+.rh-reim-approve{background:#087F50;}
+.rh-reim-reject{background:#B83B35;}
+.rh-reim-detail-modal{width:min(820px,calc(100vw - 56px))!important;max-height:88vh!important;padding:14px!important;overflow:auto!important;}
+.rh-reim-detail-modal .rh-reim-evidence-hero{border-radius:10px;}
+.rh-reim-detail-modal .rh-reim-detail-body{padding:18px 16px 10px;}
+@media(max-width:700px){
+  .rh-reim-evidence-hero,.rh-reim-evidence{min-height:160px;max-height:360px;}
+  .rh-reim-proof-image{max-height:360px;}
+  .rh-reim-proof-frame{height:330px;}
+  .rh-reim-proof-media{max-height:330px;}
+  .rh-reim-detail-body{padding:17px 18px 24px;}
+  .rh-reim-actions{gap:9px;}
+  .rh-reim-actions button{min-height:48px;}
+}
+@media(prefers-reduced-motion:reduce){.rh-reim-actions button{transition:none!important;}}
+</style>
+<style id="rh-stage2-desktop-approval-layout-v59">
+/* Stage 2 visual consistency: the desktop approval dialogs share the established
+   attachment-left / request-details-right layout. Mobile detail flows are untouched. */
+@media (min-width:1024px) {
+  /* Attendance: let the right-hand information column determine the dialog height.
+     The map and evidence photo share that height instead of forcing the media column
+     to grow beyond the decision buttons. */
+  body.rh-desk-on .rk-att-approval-panel {
+    display:flex;
+    flex-direction:column;
+    width:min(1220px,calc(100vw - 44px));
+    max-height:calc(100vh - 44px);
+    overflow:hidden;
+  }
+  body.rh-desk-on #rkAttApprovalContent { min-height:0; overflow:hidden; }
+  body.rh-desk-on .rk-att-approval-layout {
+    display:grid;
+    grid-template-columns:minmax(0,1.08fr) minmax(410px,.92fr);
+    align-items:stretch;
+    min-height:0;
+    max-height:calc(100vh - 100px);
+    overflow:hidden;
+  }
+  body.rh-desk-on .rk-att-approval-visual {
+    display:grid;
+    grid-template-rows:minmax(160px,1.65fr) minmax(120px,1fr);
+    align-self:stretch;
+    height:100%;
+    min-height:0;
+    max-height:100%;
+    gap:10px;
+    padding:0 0 0 16px;
+    overflow:hidden;
+  }
+  body.rh-desk-on .rk-att-approval-map,
+  body.rh-desk-on .rk-att-approval-photo {
+    width:100%;
+    height:100%;
+    min-width:0;
+    min-height:0;
+    max-height:100%;
+    overflow:hidden;
+  }
+  body.rh-desk-on .rk-att-approval-map iframe {
+    width:100%;
+    height:100%;
+    min-height:0 !important;
+  }
+  body.rh-desk-on .rk-att-approval-map-empty,
+  body.rh-desk-on .rk-att-photo-empty {
+    width:100%;
+    height:100%;
+    min-height:0 !important;
+  }
+  body.rh-desk-on .rk-att-approval-photo img {
+    width:100%;
+    height:100%;
+    min-height:0 !important;
+    max-height:100%;
+    object-fit:contain;
+  }
+  body.rh-desk-on .rk-att-approval-body {
+    min-width:0;
+    min-height:0;
+    align-self:stretch;
+    overflow-y:auto;
+    max-height:calc(100vh - 100px);
+    overscroll-behavior:contain;
+  }
+
+  /* Reimbursement: keep the same shared markup/attachment resolver on both
+     platforms, but restore the desktop two-column composition used by Time Off. */
+  body.rh-desk-on .rh-reim-detail-modal {
+    width:min(1120px,calc(100vw - 56px)) !important;
+    max-width:1120px !important;
+    max-height:88vh !important;
+    padding:22px !important;
+    overflow:hidden !important;
+  }
+  body.rh-desk-on .rh-reim-detail-modal #rkReimbursementDetailContent {
+    min-width:0;
+    min-height:0;
+  }
+  body.rh-desk-on .rh-reim-detail-modal .rh-reim-approval-detail {
+    display:grid;
+    grid-template-columns:minmax(0,1.08fr) minmax(390px,.92fr);
+    align-items:stretch;
+    gap:22px;
+    width:100%;
+    min-width:0;
+    min-height:0;
+  }
+  body.rh-desk-on .rh-reim-detail-modal .rh-reim-evidence-hero {
+    width:100%;
+    height:100%;
+    min-width:0;
+    min-height:380px;
+    max-height:none;
+    border:1px solid #D7E2DA;
+    border-radius:2px;
+    background:#F4F8F5;
+  }
+  body.rh-desk-on .rh-reim-detail-modal .rh-reim-evidence {
+    width:100%;
+    height:100%;
+    min-width:0;
+    min-height:0;
+    max-height:none;
+  }
+  body.rh-desk-on .rh-reim-detail-modal .rh-reim-proof-image {
+    width:100%;
+    height:100%;
+    max-height:none;
+    object-fit:contain;
+  }
+  body.rh-desk-on .rh-reim-detail-modal .rh-reim-proof-frame {
+    width:100%;
+    height:100%;
+    min-height:380px;
+  }
+  body.rh-desk-on .rh-reim-detail-modal .rh-reim-proof-media {
+    width:100%;
+    max-height:100%;
+    object-fit:contain;
+  }
+  body.rh-desk-on .rh-reim-detail-modal .rh-reim-detail-body {
+    min-width:0;
+    min-height:0;
+    max-height:calc(88vh - 44px);
+    overflow-y:auto;
+    padding:0 8px 2px 0;
+    overscroll-behavior:contain;
+  }
+}
+
+@media (min-width:1024px) and (max-width:1199px) {
+  body.rh-desk-on .rh-reim-detail-modal .rh-reim-approval-detail {
+    grid-template-columns:minmax(0,1fr) minmax(360px,1fr);
+    gap:14px;
+  }
+  body.rh-desk-on .rk-att-approval-layout {
+    grid-template-columns:minmax(0,1fr) minmax(380px,.98fr);
+  }
+}
+
+@media (max-width:1023px) {
+  /* Preserve the established mobile single-column detail flow. */
+  .rh-reim-approval-detail { display:block; }
+}
+</style>
+<style id="rh-stage2-approval-consistency-v62">
+/* Final Stage 2 corrections: common timeline direction, common decision controls,
+   and a stable two-part attendance evidence column. */
+@media (min-width:1024px) {
+  body.rh-desk-on .rk-att-approval-panel { display:flex; flex-direction:column; }
+  body.rh-desk-on #rkAttApprovalContent { min-height:0; overflow:hidden; }
+  body.rh-desk-on .rk-att-approval-layout {
+    display:grid;
+    grid-template-columns:minmax(0,1.08fr) minmax(410px,.92fr);
+    align-items:stretch;
+    min-height:380px;
+    height:auto;
+    max-height:calc(100vh - 112px);
+    overflow:hidden;
+    box-sizing:border-box;
+  }
+  body.rh-desk-on .rk-att-approval-visual {
+    display:grid;
+    grid-template-rows:minmax(0,1.18fr) minmax(0,.82fr);
+    align-self:stretch;
+    width:100%;
+    height:100%;
+    min-height:0;
+    max-height:100%;
+    gap:10px;
+    padding:0 0 0 16px;
+    overflow:hidden;
+    box-sizing:border-box;
+  }
+  body.rh-desk-on .rk-att-approval-map,
+  body.rh-desk-on .rk-att-approval-photo {
+    position:relative;
+    width:100%;
+    height:100%;
+    min-width:0;
+    min-height:0;
+    max-height:100%;
+    overflow:hidden;
+    box-sizing:border-box;
+  }
+  body.rh-desk-on .rk-att-approval-map iframe {
+    position:absolute;
+    inset:0;
+    display:block;
+    width:100%;
+    height:100%;
+    min-height:0 !important;
+    border:0;
+  }
+  body.rh-desk-on .rk-att-approval-map-empty,
+  body.rh-desk-on .rk-att-photo-empty {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    height:100%;
+    min-height:0 !important;
+    box-sizing:border-box;
+  }
+  body.rh-desk-on .rk-att-approval-photo img {
+    position:absolute;
+    inset:0;
+    display:block;
+    width:100%;
+    height:100%;
+    min-height:0 !important;
+    max-height:100%;
+    object-fit:contain;
+    background:#EEF2F0;
+  }
+  body.rh-desk-on .rk-att-approval-body {
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    min-height:380px;
+    align-self:stretch;
+    box-sizing:border-box;
+    padding-bottom:0;
+    overscroll-behavior:contain;
+  }
+  body.rh-desk-on .rk-att-actions {
+    position:sticky;
+    bottom:0;
+    z-index:4;
+    margin-top:auto !important;
+    padding:9px 0 0;
+    background:#fff;
+  }
+
+  /* One exact desktop button geometry for Presensi, Time Off and Reimbursement. */
+  body.rh-desk-on .rk-att-actions,
+  body.rh-desk-on .rk-cuti-detail-actions,
+  body.rh-desk-on .rh-reim-actions.rk-cuti-detail-actions {
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:8px;
+  }
+  body.rh-desk-on .rk-att-actions button,
+  body.rh-desk-on .rk-cuti-detail-actions .rk-btn,
+  body.rh-desk-on .rh-reim-actions.rk-cuti-detail-actions button {
+    display:inline-flex !important;
+    box-sizing:border-box !important;
+    flex:0 0 88px !important;
+    width:88px !important;
+    min-width:88px !important;
+    max-width:88px !important;
+    height:36px !important;
+    min-height:36px !important;
+    max-height:36px !important;
+    align-items:center !important;
+    justify-content:center !important;
+    padding:0 !important;
+    border-radius:5px !important;
+    font-family:Calibri,Arial,sans-serif !important;
+    font-size:12px !important;
+    font-weight:600 !important;
+    line-height:1.25 !important;
+    box-shadow:none !important;
+    white-space:nowrap !important;
+    cursor:pointer;
+  }
+  body.rh-desk-on .rk-att-actions button.approve,
+  body.rh-desk-on .rk-cuti-detail-actions .rk-btn:not(.danger),
+  body.rh-desk-on .rh-reim-actions.rk-cuti-detail-actions .rk-btn:not(.danger) {
+    background:#087A4B !important;
+    border:1px solid #087A4B !important;
+    color:#fff !important;
+  }
+  body.rh-desk-on .rk-att-actions button.reject,
+  body.rh-desk-on .rk-cuti-detail-actions .rk-btn.danger,
+  body.rh-desk-on .rh-reim-actions.rk-cuti-detail-actions .rk-btn.danger {
+    background:#B43C35 !important;
+    border:1px solid #B43C35 !important;
+    color:#fff !important;
+  }
+  body.rh-desk-on .rk-att-actions button:disabled,
+  body.rh-desk-on .rk-cuti-detail-actions button:disabled,
+  body.rh-desk-on .rh-reim-actions.rk-cuti-detail-actions button:disabled {
+    opacity:.62 !important;
+    cursor:not-allowed !important;
+  }
+  body.rh-desk-on .rh-reim-actions.rk-cuti-detail-actions { margin:0; padding:0; }
+}
+@media (max-width:1023px) {
+  /* One mobile action pattern across Presensi, Time Off and Reimbursement. */
+  .det-actions,
+  .rh-reim-actions.rk-cuti-detail-actions {
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+    margin-top:20px;
+  }
+  .det-actions button,
+  .rh-reim-actions.rk-cuti-detail-actions .rk-btn {
+    display:flex !important;
+    box-sizing:border-box !important;
+    flex:0 0 auto !important;
+    width:100% !important;
+    min-width:0 !important;
+    max-width:none !important;
+    height:46px !important;
+    min-height:46px !important;
+    max-height:46px !important;
+    align-items:center !important;
+    justify-content:center !important;
+    padding:0 16px !important;
+    border-radius:6px !important;
+    font-family:inherit !important;
+    font-size:15px !important;
+    font-weight:600 !important;
+    line-height:1.25 !important;
+    box-shadow:none !important;
+    text-align:center !important;
+    white-space:nowrap !important;
+  }
+  .det-actions button.btn-blue,
+  .det-actions button.btn-att-approve,
+  .rh-reim-actions.rk-cuti-detail-actions .rk-btn:not(.danger) {
+    background:#087A4B !important;
+    border:1px solid #087A4B !important;
+    color:#fff !important;
+  }
+  .det-actions button.btn-ghost,
+  .det-actions button.btn-att-reject,
+  .rh-reim-actions.rk-cuti-detail-actions .rk-btn.danger {
+    background:#B43C35 !important;
+    border:1px solid #B43C35 !important;
+    color:#fff !important;
+  }
+}
 </style>
 </body></html>

@@ -1,4 +1,4 @@
-/* ReHolz HRIS Service Worker v54.
+/* ReHolz HRIS Service Worker v62.
  * GitHub Pages deployment: publish this file beside index.html as sw.js,
  * and keep the assets/ folder (logo) beside them.
  * The app shell is resolved from the Service Worker scope (./), never a versioned HTML filename.
@@ -6,9 +6,9 @@
  */
 'use strict';
 
-const RH_SW_RELEASE = 'v54-approval-flow-logo-assets';
-const RH_EXPECTED_HTML_RELEASE = 'v14.7.0-approval-flow-logo-assets-pdf-clean';
-const RH_SHELL_CACHE = 'rehholz-app-shell-v54';
+const RH_SW_RELEASE = 'v62-stage2-approval-consistency';
+const RH_EXPECTED_HTML_RELEASE = 'v14.7.8-stage2-approval-consistency';
+const RH_SHELL_CACHE = 'rehholz-app-shell-v62';
 const RH_ASSET_CACHE = 'reholz-app-assets-v1';
 const RH_ASSET_URLS = [
   './assets/reholz-logo-green.png',
