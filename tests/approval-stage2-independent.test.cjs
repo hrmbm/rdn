@@ -33,7 +33,7 @@ for (const name of ['reimbursementRpc','reimbursementRequestId','reimbursementCa
 check('mobile inline detail handler is exported to window', /window\.openMobileReimbursementById\s*=\s*openMobileReimbursementById/.test(html));
 check('mobile approve/reject handler is exported to window', /window\.actMobileReimbursement\s*=\s*actMobileReimbursement/.test(html));
 check('desktop bulk approval waits for refreshBadge promise', /Promise\.all\(\[renderMyApprovalsPage\(\),refreshBadge\(\)\.catch/.test(html));
-check('refreshBadge returns a promise', /function refreshBadge\(\)\s*\{\s*\/\/[\s\S]{0,120}return Promise\.all\(/.test(html));
+check('refreshBadge returns a promise', /function refreshBadge\(queueResult\)\s*\{[\s\S]{0,300}return Promise\.all\(/.test(html));
 check('personal approval queue does not await HR-wide monitoring', /if\(isHR\(\)\)\{\s*var monitorLoad=renderPendingTrackingPage\(\)/.test(html) && /Promise\.all\(\[corePromise,reimbursementPromise\]\)/.test(html));
 check('canonical queue keeps Presensi/Time Off and Reimbursement failures independent', /errors:\{core:core\.error\|\|null,reimbursement:reim\.error\|\|null\}/.test(html));
 check('mobile refresh consumes the canonical approval queue', /function refreshPending\(\)[\s\S]{0,260}loadApprovalQueueCanonical\(\)/.test(html));
@@ -45,6 +45,6 @@ check('decision uncertainty is verified against server approval identity', /hr_g
 const marker = (html.match(/<meta name="reholz-release" content="([^"]+)"\s*>/) || [])[1];
 const expected = (sw.match(/const RH_EXPECTED_HTML_RELEASE = '([^']+)'/) || [])[1];
 check('HTML and Service Worker release markers match', !!marker && marker === expected);
-check('Service Worker cache release advanced to v63', /rehholz-app-shell-v63/.test(sw) && /v63-stage2-attendance-popup-proportions/.test(sw));
+check('Service Worker cache release advanced to v66', /rehholz-app-shell-v72/.test(sw) && /v72-reimbursement-desktop-ui/.test(sw));
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

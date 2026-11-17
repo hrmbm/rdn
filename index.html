@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="id"><head>
-<meta name="reholz-release" content="v14.7.9-stage2-attendance-popup-proportions">
+<meta name="reholz-release" content="v14.7.18-stage4-reimbursement-desktop-ui">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <link rel="preconnect" href="https://unpkg.com" crossorigin="">
@@ -2566,9 +2566,10 @@ body.rh-noscroll { overflow: hidden !important; }
   }
   #rhLimitedAccess { display:none !important; }
   body.rh-role-staff #rhDesk .rk-main { position:relative; min-height:65vh; }
-  body.rh-role-staff #rhDesk .rk-main .rk-page.on:not(#rkp-timeoffRequest) { filter:blur(5px); pointer-events:none; user-select:none; opacity:.68; }
+  body.rh-role-staff #rhDesk .rk-main .rk-page.on:not(#rkp-timeoffRequest):not(#rkp-reimbursementRequest) { filter:blur(5px); pointer-events:none; user-select:none; opacity:.68; }
   body.rh-role-staff #rkLimitedOverlay { position:absolute; inset:0; z-index:30; display:none; align-items:center; justify-content:center; color:#14352A; font-size:16px; font-weight:750; letter-spacing:.02em; pointer-events:none; }
   body.rh-role-staff #rhDesk .rk-main .rk-page.on#rkp-timeoffRequest { filter:none; pointer-events:auto; opacity:1; }
+  body.rh-reim-limited #rhDesk .rk-main .rk-page.on#rkp-reimbursementRequest { filter:blur(5px); pointer-events:none; user-select:none; opacity:.68; }
 
 }
 @media (max-width: 1023.98px) {
@@ -2779,6 +2780,8 @@ body.rh-desk-on .rk-att-actions button {
 <style id="rh-v13-8-3-6-desktop-timeoff-request-form">
 @media (min-width:1024px) {
   body.rh-desk-on #rkp-timeoffRequest { max-width:1120px; }
+  body.rh-desk-on #rkp-reimbursementRequest { max-width:1120px; }
+  body.rh-desk-on #rkp-reimbursementRequest #reimbursementApp { width:100%; max-width:920px; margin:0 auto; }
   body.rh-desk-on .rk-tor-page { width:100%; max-width:920px; margin:0 auto; padding:10px 0 28px; }
   body.rh-desk-on .rk-tor-heading { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:0 0 18px; }
   body.rh-desk-on .rk-tor-eyebrow { color:#61806D; font-size:10px; font-weight:800; letter-spacing:.12em; margin-bottom:5px; }
@@ -3136,7 +3139,7 @@ body.rh-desk-on .rk-appr-select-row input[type=checkbox],body.rh-desk-on .rk-app
  body.rk-printing-incentive .rk-incentive-exact-signatures{height:auto!important;min-height:19mm!important;max-height:none!important;overflow:visible!important;align-items:start!important;margin-top:4mm!important}
  body.rk-printing-incentive .rk-incentive-exact-signatures>div{position:static!important;height:auto!important;min-height:18mm!important;max-height:none!important;overflow:visible!important;display:flex!important;flex-direction:column!important;align-items:center!important}
  body.rk-printing-incentive .rk-incentive-exact-signatures>div>span{position:static!important;transform:none!important;width:100%!important;max-width:none!important;text-align:center!important}
- body.rk-printing-incentive .rk-incentive-exact-signatures>div>b{position:static!important;transform:none!important;display:block!important;width:100%!important;max-width:none!important;margin-top:12mm!important;text-align:center!important;white-space:normal!important;overflow:visible!important}
+ body.rk-printing-incentive .rk-incentive-exact-signatures>div>b{position:static!important;transform:none!important;display:block!important;width:100%!important;max-width:none!important;margin-top:14mm!important;text-align:center!important;white-space:normal!important;overflow:visible!important}
  body.rk-printing-incentive .rk-incentive-ledger-report{box-sizing:border-box!important;height:282mm!important;max-height:280mm!important;overflow:hidden!important;page-break-after:auto!important;break-after:auto!important}
  body.rk-printing-incentive .rk-incentive-ledger-report+.rk-incentive-ledger-report{display:none!important;page-break-before:auto!important;break-before:auto!important}
  body.rk-printing-incentive .rk-ledger-fit{width:100%!important;overflow:hidden!important}
@@ -3759,7 +3762,7 @@ window.__APP_PREPARING_ASSETS = true;
         <span>Reimbursement</span>
       </button>
 
-      <button class="menu-item" id="menuKaryawanMgr" style="display: flex;" onclick="go('s-kar');loadKaryawanMgr()">
+      <button class="menu-item" id="menuKaryawanMgr" style="display: flex;" onclick="go('s-kar')">
         <div class="menu-ic re-3d">
           <svg viewBox="0 0 36 36" width="34" height="34" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -4393,7 +4396,7 @@ window.__APP_PREPARING_ASSETS = true;
     <h3 style="justify-content:center" id="outTitle">Anda berada di luar kantor</h3>
     <p style="font-size:14px;color:#3E4F43;margin:6px 0 14px" id="outBody"></p>
     <p id="outNoteRequiredMsg" style="display:none"></p>
-    <div class="field" id="outAreaField"><label id="outAreaLabel" for="outArea">Area *</label><select id="outArea"><option value="">Pilih area...</option><option value="Area 1">Area 1</option><option value="Area 2">Area 2</option><option value="Area 3">Area 3</option><option value="Area 4">Area 4</option><option value="Area lainnya">Area lainnya</option></select></div>
+    <div class="field" id="outAreaField"><label id="outAreaLabel" for="outArea">Area *</label><select id="outArea"><option value="">Pilih area...</option><option value="Area 1">Area 1</option><option value="Area 2">Area 2</option><option value="Area 3">Area 3</option><option value="Area 4">Area 4</option><option value="Area lainnya">Area lainnya</option><option value="Surabaya &amp; Sekitarnya">Surabaya &amp; Sekitarnya</option></select></div>
     <div class="field"><label for="outNote">Keterangan *</label><input id="outNote" placeholder="Isi keterangan" maxlength="120"></div>
     <button class="btn btn-blue" id="outPrimary" onclick="outsideProceed()">Lanjut Clock In</button>
     <button class="btn btn-ghost" style="margin-top:10px" onclick="outsideRecheck()">Periksa lokasi lagi</button>
@@ -4525,8 +4528,8 @@ window.__APP_PREPARING_ASSETS = true;
 var SUPABASE_URL = 'https://usizgscyxtbuutzzdlmq.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzaXpnc2N5eHRidXV0enpkbG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxNzA4OTAsImV4cCI6MjEwOTc0Njg5MH0.eo1YNLVIii9_QJkb13OleJ2y46LAVc9WrxQtjIrvF60';
 var APP_VERSION = '6.9-REHOLZ-REIMBURSEMENT-REALIZATION-APPROVAL-SDR'; // Kept in sync with existing app-version RPC to avoid forced reload loops.
-var RH_HTML_RELEASE = 'v14.7.4-approval-stage2-unified-queue-evidence';
-var RH_DISPLAY_VERSION = 'v14.7.0';
+var RH_HTML_RELEASE = 'v14.7.18-stage4-reimbursement-desktop-ui';
+var RH_DISPLAY_VERSION = 'v14.7.17';
 var RH_RELEASE_STORAGE_KEY = 'reh_html_release_seen';
 var RH_RELEASE_UPGRADE_ACTIVE = false;
 var MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
@@ -4696,40 +4699,82 @@ function clearAllSession() {
 }
 
 function withTimeout(p, ms, fn) {
-  return Promise.race([
-    p,
-    new Promise(function(_, rej) {
-      setTimeout(function() { rej(new Error('Waktu tunggu server habis. Periksa koneksi internet lalu coba lagi.')); }, ms);
-    })
-  ]);
+  // Selalu bersihkan timer saat request selesai; Promise.race sebelumnya
+  // meninggalkan satu timer hidup untuk setiap RPC sampai timeout tercapai.
+  return new Promise(function(resolve, reject) {
+    var timer = setTimeout(function() {
+      reject(new Error('Waktu tunggu server habis. Periksa koneksi internet lalu coba lagi.'));
+    }, ms);
+    Promise.resolve(p).then(function(value) {
+      clearTimeout(timer); resolve(value);
+    }, function(error) {
+      clearTimeout(timer); reject(error);
+    });
+  });
 }
 
 var SESSION_GEN = 0;
 function stale(gen) { return gen !== SESSION_GEN; }
 
-/* Deduplikasi pemanggilan read-RPC yang sering dipicu berbarengan
- * (badge + panel + daftar persetujuan memanggil get_pending_approvals tiga kali
- * hampir bersamaan). Permintaan identik dalam jendela singkat berbagi satu
- * round-trip backend; mutasi apa pun langsung mengosongkan peta agar data segar. */
+/* Read dedupe: menggabungkan request identik, menjaga scope per sesi,
+ * membatasi memori, dan membuang hasil gagal agar retry tidak memakai error lama. */
 var RH_READ_DEDUPE_TTL = 2500;
+var RH_READ_DEDUPE_MAX = 96;
 var RH_READ_DEDUPE = Object.create(null);
+function rhReadDedupeTrim() {
+  var now = Date.now(), keys = Object.keys(RH_READ_DEDUPE);
+  keys.forEach(function(key) {
+    var entry = RH_READ_DEDUPE[key];
+    if (entry && !entry.pending && now - entry.at > RH_READ_DEDUPE_TTL) delete RH_READ_DEDUPE[key];
+  });
+  keys = Object.keys(RH_READ_DEDUPE);
+  while (keys.length > RH_READ_DEDUPE_MAX) {
+    var oldestKey = null, oldestAt = Infinity;
+    keys.forEach(function(key) {
+      var entry = RH_READ_DEDUPE[key];
+      if (entry && !entry.pending && entry.at < oldestAt) { oldestAt = entry.at; oldestKey = key; }
+    });
+    if (oldestKey === null) break; // Do not evict an in-flight request.
+    delete RH_READ_DEDUPE[oldestKey];
+    keys = Object.keys(RH_READ_DEDUPE);
+  }
+}
 function rhReadDedupe(key, producer) {
-  var now = Date.now(), hit = RH_READ_DEDUPE[key];
-  if (hit && hit.p && (now - hit.at) < RH_READ_DEDUPE_TTL) return hit.p;
-  var p;
-  try { p = Promise.resolve(producer()); } catch (e) { return Promise.reject(e); }
-  RH_READ_DEDUPE[key] = { at: now, p: p };
-  p.catch(function () {});
-  return p;
+  var cacheKey = String(key), now = Date.now(), hit = RH_READ_DEDUPE[cacheKey];
+  if (hit && hit.promise && (hit.pending || (now - hit.at) < RH_READ_DEDUPE_TTL)) return hit.promise;
+  if (hit) delete RH_READ_DEDUPE[cacheKey];
+  var entry = { at: now, pending: true, promise: null };
+  entry.promise = Promise.resolve().then(producer).then(function(value) {
+    entry.pending = false; entry.at = Date.now(); rhReadDedupeTrim(); return value;
+  }, function(error) {
+    if (RH_READ_DEDUPE[cacheKey] === entry) delete RH_READ_DEDUPE[cacheKey];
+    throw error;
+  });
+  RH_READ_DEDUPE[cacheKey] = entry;
+  rhReadDedupeTrim();
+  return entry.promise;
 }
 function rhReadInvalidate() { RH_READ_DEDUPE = Object.create(null); }
-var RH_RPC_READ_WHITELIST = /^(get_pending_approvals|get_my_notifications|get_team_activity|get_riwayat_cuti|get_my_pending_requests|get_status_hari_ini|get_master_cuti|get_sisa_cuti|bootstrap|hr_get_pending_reimbursement_approvals|hr_get_my_reimbursement_requests|hr_get_employee_directory|get_face_photos)$/i;
+function rhReadSessionScope() {
+  var user = (typeof S !== 'undefined' && S && S.user) || {};
+  return String(SESSION_GEN) + '|' + String(user.nik || 'anonymous') + '|' + String(user.role || '').toUpperCase();
+}
+function rhReadParamsKey(params) {
+  var clean = Object.create(null), source = params || {};
+  Object.keys(source).sort().forEach(function(key) {
+    // Never retain session credentials in a cache key or diagnostics.
+    if (/^(p_token|token|access_token|authorization)$/i.test(key)) return;
+    clean[key] = source[key];
+  });
+  try { return JSON.stringify(clean); } catch (e) { return '[unserializable-read-params]'; }
+}
+var RH_RPC_READ_WHITELIST = /^(?:get_[a-z0-9_]+|hr_get_[a-z0-9_]+|bootstrap|hr_attendance_(?:today|week)|hr_leave_yearly_stats|hr_monthly_report|hr_attendance_summary)$/i;
 var RH_RPC_MUTATION = /^(login_pin|process_|submit_|simpan|save_|delete_|mark_my|hr_submit|hr_process|hr_update|hr_add|hr_create|hr_delete|hr_deactivate|hr_reactivate|hr_reset|hr_grant|hr_revoke|hr_save|hr_set|hr_import|hr_upload|admin_delete|grant_|reset_|revoke_)/i;
 
 async function rpc(fn, params, timeoutMs) {
   if (RH_RPC_MUTATION.test(String(fn || ''))) rhReadInvalidate();
   if (RH_RPC_READ_WHITELIST.test(String(fn || ''))) {
-    var cacheKey = String(fn) + '|' + JSON.stringify(params || {});
+    var cacheKey = rhReadSessionScope() + '|' + String(fn) + '|' + rhReadParamsKey(params);
     return rhReadDedupe(cacheKey, function () { return rpcUncached(fn, params, timeoutMs); });
   }
   return rpcUncached(fn, params, timeoutMs);
@@ -4746,6 +4791,10 @@ async function rpcUncached(fn, params, timeoutMs) {
     if (stale(gen)) throw new Error('STALE');
     if (r.error) {
       var m = r.error.message || 'Terjadi kendala pada server.';
+      var rpcError = new Error(m);
+      if (r.error.code) rpcError.code = r.error.code;
+      if (r.error.details) rpcError.details = r.error.details;
+      if (r.error.hint) rpcError.hint = r.error.hint;
       if (/Sesi berakhir|Unauthorized|invalid token|token expired|token tidak valid|sesi tidak valid/i.test(m)) {
         if (stale(gen)) { throw new Error('STALE'); }
         else if (fn === 'submit_attendance') { /* biarkan pemanggil menangani */ }
@@ -4753,7 +4802,7 @@ async function rpcUncached(fn, params, timeoutMs) {
         else if (S.freshLogin) { clearAllSession(); toast('⚠️ Sesi baru tidak dapat diverifikasi: ' + m); showLogin(); }
         else { clearAllSession(); location.reload(); }
       }
-      throw new Error(m);
+      throw rpcError;
     }
     return r.data;
   } catch (e) {
@@ -5703,7 +5752,8 @@ async function prewarmSemiStaticData() {
     if (stale(gen)) return false;
     var rows = [], directoryRole = ['HR','ADMIN','SUPERADMIN'].indexOf(role) >= 0;
     if (directoryRole) {
-      // Disk cache is painted first; fresh summary replaces it after the secured RPC completes.
+      // HR/Admin directory data is loaded on demand when its screen is opened.
+      // Avoid fetching the whole roster, options and every employee photo during login.
       var cached = await Promise.all([RHMediaCache.kvGet('empSummary'), RHMediaCache.kvGet('karData')]);
       if (stale(gen)) return false;
       var ec = cached[0], kc = cached[1];
@@ -5718,35 +5768,26 @@ async function prewarmSemiStaticData() {
         DATA.karList.forEach(function(x) { DATA.faceVer[x.nik] = x.facePhotoVer || x.faceVer || 0; });
         DATA._karAt = kc.at || 0;
       }
-      try {
-        var result = await Promise.all([
-          api('getKaryawanSummary', [S.user.role], 30000),
-          api('getKaryawanOptions', [], 20000).catch(function(e) { console.warn('[ReHolz] Employee options refresh failed:', e && e.message || e); return null; })
-        ]);
-        if (stale(gen)) return false;
-        var fresh = rhRosterRows(result[0]);
-        if (fresh.length) {
-          rows = fresh; DATA.empList = fresh; DATA.karList = fresh; DATA._empAt = DATA._karAt = Date.now();
-          fresh.forEach(function(x) { var id=String(x.nik||x.employee_id||''); if (id) DATA.faceVer[id] = x.facePhotoVer || x.face_photo_ver || x.faceVer || 0; });
-          if (result[1]) DATA.karOpts = result[1];
-          RHMediaCache.kvSet('empSummary', { list:fresh, at:Date.now(), release:RH_HTML_RELEASE });
-          RHMediaCache.kvSet('karData', { list:fresh, opts:DATA.karOpts, at:Date.now(), release:RH_HTML_RELEASE });
-          if (currentScr() === 's-emp') renderEmpList('');
-        } else rows = DATA.karList.length ? DATA.karList : DATA.empList;
-      } catch (e) {
-        console.warn('[ReHolz] Employee catalog refresh failed; using cached summary if available:', e && e.message || e);
-        rows = DATA.karList.length ? DATA.karList : DATA.empList;
-      }
+      // Intentionally do not warm the company-wide photo list here. Visible rows are
+      // hydrated when the directory page is opened; dashboard uses the compact summary RPC.
+      rows = [];
     } else {
       // Never prefetch a company-wide directory for ordinary employees.
       rows = [{ nik:S.user.nik, nama:S.user.nama, faceVer:(S.user.employee || {}).facePhotoVer || DATA.faceVer[S.user.nik] || 0 }];
       if (S.approver) {
         try {
-          var teamResp = await api('getTeamActivity', [todayISO()], 20000);
-          if (!stale(gen)) {
-            DATA.team = (teamResp && teamResp.list) || []; rows = rows.concat(DATA.team);
-            RHMediaCache.kvSet('teamActivity', { date:todayISO(), list:DATA.team, at:Date.now(), release:RH_HTML_RELEASE });
+          var teamDate = todayISO();
+          var teamMeta = DATA._teamMeta || {};
+          var teamIsFresh = Array.isArray(DATA.team) && teamMeta.nik === String(S.user.nik) && teamMeta.gen === gen && teamMeta.date === teamDate && (Date.now() - Number(teamMeta.at || 0)) < 30000;
+          if (!teamIsFresh) {
+            var teamResp = await api('getTeamActivity', [teamDate], 20000);
+            if (!stale(gen)) {
+              DATA.team = (teamResp && teamResp.list) || [];
+              DATA._teamMeta = { nik:String(S.user.nik), gen:gen, date:teamDate, at:Date.now() };
+              RHMediaCache.kvSet('teamActivity', { date:teamDate, list:DATA.team, at:Date.now(), release:RH_HTML_RELEASE });
+            }
           }
+          if (!stale(gen)) rows = rows.concat(DATA.team || []);
         } catch (e) { console.warn('[ReHolz] Team summary prewarm failed:', e && e.message || e); }
       }
     }
@@ -5900,7 +5941,7 @@ function normalizeFaceDescriptor(value) {
 async function api(fn, args, timeoutMs) {
   args = args || [];
   fn = String(fn);
-  if (S && S.user && String(S.user.role || '').toUpperCase() === 'ADMIN' && /^(simpanAbsensi|submitCuti|hrAddKaryawan|hrUpdateKaryawan|hrDeactivate|hrReactivate|hrResetPin|processApproval|processCutiApproval|hrUpdateEmployeeProfile|hrSaveFaceReference|grantFace|grantMassFace|resetFace|revokeFace|adminDeleteRecord|adminDeleteToday|userSetRole|saveLocation|deleteLocation|saveAttendanceRule|saveCalendarOverride|importPublicHolidays)$/i.test(fn)) {
+  if (S && S.user && String(S.user.role || '').toUpperCase() === 'ADMIN' && /^(submitCuti|hrAddKaryawan|hrUpdateKaryawan|hrDeactivate|hrReactivate|hrResetPin|processApproval|processCutiApproval|hrUpdateEmployeeProfile|hrSaveFaceReference|grantFace|grantMassFace|resetFace|revokeFace|adminDeleteRecord|adminDeleteToday|userSetRole|saveLocation|deleteLocation|saveAttendanceRule|saveCalendarOverride|importPublicHolidays)$/i.test(fn)) {
     throw new Error('Akses ubah data tidak tersedia untuk akun ini.');
   }
   if (fn === 'login') {
@@ -7063,14 +7104,12 @@ function rhTodayLocalIso() {
 }
 async function rhReadRpcForDayOff(fn, params) {
   try {
-    if (typeof window.getSb !== 'function' || typeof window.getToken !== 'function') return null;
-    var client = await Promise.resolve(window.getSb());
-    if (!client || typeof client.rpc !== 'function') return null;
-    var args = Object.assign({ p_token: String(window.getToken() || '') }, params || {});
-    var result = await client.rpc(fn, args);
-    if (!result || result.error) { console.warn('[ReHolz] Day-off context unavailable:', fn, result && result.error && result.error.message); return null; }
-    return result.data;
-  } catch (e) { console.warn('[ReHolz] Day-off context unavailable:', fn, e && e.message || e); return null; }
+    var args = Object.assign({}, params || {}, { p_token: getToken() });
+    return await rpc(fn, args, 20000);
+  } catch (e) {
+    console.warn('[ReHolz] Day-off context unavailable:', fn, e && e.message || e);
+    return null;
+  }
 }
 function rhRowsFromCalendarResult(r) { return Array.isArray(r) ? r : (r && (r.records || r.rows || r.list || r.data)) || []; }
 async function rhDetectDayOffToday() {
@@ -7148,7 +7187,7 @@ function rhReadLocalClockInArea() {
   try {
     var value = JSON.parse(localStorage.getItem(key) || 'null');
     if (!value || value.date !== rhTodayLocalIso() || value.clockInSaved !== true || value.outside !== true) return null;
-    return ['Area 1','Area 2','Area 3','Area 4','Area lainnya'].indexOf(value.area) >= 0 ? value.area : null;
+    return ['Area 1','Area 2','Area 3','Area 4','Area lainnya','Surabaya & Sekitarnya'].indexOf(value.area) >= 0 ? value.area : null;
   } catch (_) { return null; }
 }
 function rhReadLocalClockInMode() {
@@ -7179,7 +7218,6 @@ function rhSaveLocalClockInArea() {
 }
 
 async function startAttendance(type) {
-  if (isAdminReadOnly()) { toast('Akun Administrator memiliki akses baca saja dan tidak dapat melakukan presensi.'); return; }
   if (FACE_REFERENCE_UPDATING || FACE_PROFILE_PREPARING) { toast('Face ID sedang diperbarui. Tunggu hingga selesai.'); return; }
   if (ATT.submitting || ATT.contextRefreshing) return;
   // Re-check branch, office coordinates, and today's attendance status on the server before every attempt.
@@ -7358,7 +7396,7 @@ function openOutside() {
       if(body) body.textContent=(where ? where + ' ' : '') + 'Area Clock Out mengikuti area Clock In hari ini.' + (rhIsStandbyToday()?' Catatan opsional saat Standby.':'') + accuracyNote;
     } else {
       if(body) body.textContent=(where ? where + ' ' : '') + (rhIsStandbyToday()?'Pilih area Clock Out. Catatan opsional saat Standby.':'Pilih area dan isi keterangan Clock Out di luar kantor.') + accuracyNote;
-      if(area) area.innerHTML='<option value="">Pilih area...</option><option value="Area 1">Area 1</option><option value="Area 2">Area 2</option><option value="Area 3">Area 3</option><option value="Area 4">Area 4</option><option value="Area lainnya">Area lainnya</option>';
+      if(area) area.innerHTML='<option value="">Pilih area...</option><option value="Area 1">Area 1</option><option value="Area 2">Area 2</option><option value="Area 3">Area 3</option><option value="Area 4">Area 4</option><option value="Area lainnya">Area lainnya</option><option value="Surabaya &amp; Sekitarnya">Surabaya &amp; Sekitarnya</option>';
     }
   } else if (ATT.dayOffChoice === 'STANDBY') {
     if(title)title.textContent='Standby · Dinas Luar pada Hari Libur';
@@ -7370,13 +7408,13 @@ function openOutside() {
     if(area)area.innerHTML='<option value="">Pilih area...</option><option value="Area 1">Area 1</option><option value="Area 2">Area 2</option><option value="Area 3">Area 3</option><option value="Area 4">Area 4</option><option value="Area lainnya">Area lainnya (SDLL)</option>';
   } else if (ATT.dayOffChoice === 'PIKET') {
     if(title)title.textContent='Piket · Hari Libur';
-    if(body)body.textContent=(where ? where + ' ' : '') + 'Pilih Area 1–4 atau Area Lain untuk Piket dinas luar dan isi keterangan.' + accuracyNote;
+    if(body)body.textContent=(where ? where + ' ' : '') + 'Pilih Area 1–4, Area Lain, atau Surabaya & Sekitarnya; isi keterangan Piket.' + accuracyNote;
     if(msg)msg.textContent='';
     if(areaField)areaField.style.display='';
     if(label)label.textContent='Area Piket *';
     if(note)note.placeholder='Keterangan Piket *';
-    // Piket di luar kantor hanya menerima Area 1–4 atau Area Lain. Pilihan Kantor (P) hanya valid jika GPS di dalam radius.
-    if(area)area.innerHTML='<option value="">Pilih area...</option><option value="Area 1">Area 1</option><option value="Area 2">Area 2</option><option value="Area 3">Area 3</option><option value="Area 4">Area 4</option><option value="Area lainnya">Area lainnya (PL)</option>';
+    // SBY is outside by GPS but office-equivalent for Surabaya; the server still assigns the ordinary P code.
+    if(area)area.innerHTML='<option value="">Pilih area...</option><option value="Area 1">Area 1</option><option value="Area 2">Area 2</option><option value="Area 3">Area 3</option><option value="Area 4">Area 4</option><option value="Area lainnya">Area lainnya (PL)</option><option value="Surabaya &amp; Sekitarnya">Surabaya &amp; Sekitarnya</option>';
   } else {
     if(title)title.textContent='Anda berada di luar kantor';
     if(body)body.textContent=(where ? where + ' ' : '') + 'Pilih area dan isi keterangan Clock In di luar kantor.' + accuracyNote;
@@ -7384,7 +7422,7 @@ function openOutside() {
     if(areaField)areaField.style.display='';
     if(label)label.textContent='Area *';
     if(note)note.placeholder='Keterangan Clock In di luar kantor *';
-    if(area)area.innerHTML='<option value="">Pilih area...</option><option value="Area 1">Area 1</option><option value="Area 2">Area 2</option><option value="Area 3">Area 3</option><option value="Area 4">Area 4</option><option value="Area lainnya">Area lainnya</option>';
+    if(area)area.innerHTML='<option value="">Pilih area...</option><option value="Area 1">Area 1</option><option value="Area 2">Area 2</option><option value="Area 3">Area 3</option><option value="Area 4">Area 4</option><option value="Area lainnya">Area lainnya</option><option value="Surabaya &amp; Sekitarnya">Surabaya &amp; Sekitarnya</option>';
   }
   $('outNote').value = '';
   if (ATT.type !== 'PULANG' || !ATT.areaLock) $('outArea').value = '';
@@ -7658,17 +7696,19 @@ function finishAttendance() {
 function rhAttendanceAreaIndex(area) {
   var v=String(area||'').trim().toUpperCase();
   if(v==='KANTOR'||v==='OFFICE')return 0;
+  if(v==='SURABAYA & SEKITARNYA')return 6;
   if(/AREA\s*1/.test(v))return 1;if(/AREA\s*2/.test(v))return 2;if(/AREA\s*3/.test(v))return 3;if(/AREA\s*4/.test(v))return 4;
   if(/AREA\s*(LAIN|LAINNYA|OTHER)/.test(v))return 5;
   return null;
 }
 function rhAttendanceAreaMarker(area) {
   var n=rhAttendanceAreaIndex(area);
-  return n===0?'OFFICE':(n===5?'AX':(n?'A'+n:''));
+  return n===0?'OFFICE':(n===5?'AX':(n===6?'SBY':(n?'A'+n:'')));
 }
 function rhAttendanceCode(mode,area) {
   var n=rhAttendanceAreaIndex(area);if(n===null)return '';
   mode=String(mode||'').toUpperCase();
+  if(n===6)return mode==='PIKET'?'P':''; // SBY is a location setting; on Piket it keeps the ordinary office code P.
   if(mode==='STANDBY')return n>=1&&n<=4?'SDL'+n:(n===5?'SDLL':'');
   if(mode==='PIKET')return n===0?'P':(n===5?'PL':'P'+n);
   return n===5?'DLL':(n>=1&&n<=4?'DL'+n:'');
@@ -7686,7 +7726,6 @@ function rhPaintEvidenceStatus(st) {
 }
 
 async function submitAttendance() {
-  if (isAdminReadOnly()) { toast('Akses ubah data tidak tersedia untuk akun ini.'); return; }
   if (ATT.submitting) return;
   ATT.submitting = true;
   var b = $('btnKirim');
@@ -7742,7 +7781,7 @@ async function submitAttendance() {
     var catatan = $('attNote').value.trim();
     var standbyNoteOptional = rhIsStandbyToday();
     // Internal markers are server metadata, never free-form user text. Strip forged/stale markers on every path.
-    catatan = catatan.replace(/\[\[RHAREA=(A1|A2|A3|A4|AX)\]\]/gi, '')
+    catatan = catatan.replace(/\[\[RHAREA=(A1|A2|A3|A4|AX|SBY)\]\]/gi, '')
       .replace(/\[\[RHATT=(P[1-4]?|PL|P5|SDL[1-4]|SDLL|SDL5|DL[1-4]|DLL|DL5)\]\]/gi, '').trim();
     ATT.outside = !!chkNow.outsideByBackend;
     if (ATT.type === 'MASUK' && ATT.dayOffChoice === 'STANDBY' && chkNow.inOffice) {
@@ -7765,8 +7804,8 @@ async function submitAttendance() {
       if (areaRequired) {
         // Only the selected Area is converted into the trusted RHAREA marker.
         var areaCode = rhAttendanceAreaMarker(ATT.area);
-        if (!areaCode || areaCode === 'OFFICE') {
-          toast('Area dinas luar tidak valid. Pilih Area 1 sampai Area lainnya.');
+        if (!areaCode || areaCode === 'OFFICE' || (areaCode === 'SBY' && ATT.dayOffChoice === 'STANDBY')) {
+          toast('Area yang dipilih tidak valid untuk mode kehadiran ini.');
           ATT.outsideOk = false; ATT.outsideDialogShown = false; openOutside();
           return;
         }
@@ -8217,30 +8256,47 @@ function renderDelegateOptions() {
     if (Array.from(sel.options).some(function(o){return o.value === current;})) sel.value = current;
   });
 }
+var RH_TIMEOFF_PREWARM_PROMISE = null;
+var RH_TIMEOFF_PREWARM_GEN = -1;
 function prewarmTimeoffReferenceData() {
+  var gen = SESSION_GEN;
+  if (RH_TIMEOFF_PREWARM_PROMISE && RH_TIMEOFF_PREWARM_GEN === gen) return RH_TIMEOFF_PREWARM_PROMISE;
   var masterTask = RHMediaCache.kvGet('masterCuti').then(function(c) {
+    if (stale(gen)) return;
     if (c && Array.isArray(c.list) && c.list.length && (!CACHE.masterCuti || !CACHE.masterCuti.length)) {
       CACHE.masterCuti = c.list; CACHE.masterCutiAt = c.at || 0;
     }
     return api('getMasterCuti', [], 20000);
   }).then(function(list) {
+    if (stale(gen)) return;
     if (Array.isArray(list)) {
       CACHE.masterCuti = list; CACHE.masterCutiAt = Date.now();
       return RHMediaCache.kvSet('masterCuti', { list:list, at:CACHE.masterCutiAt, release:RH_HTML_RELEASE });
     }
   }).catch(function(e) { console.warn('[ReHolz] Time-off reference prewarm skipped:', e && e.message || e); });
   var delegateTask = Promise.all([RHMediaCache.kvGet('delegateOptions'), RHMediaCache.readyPromise]).then(function(parts) {
+    if (stale(gen)) return null;
     var c = parts[0];
     if (c && Array.isArray(c.rows) && !DELEGATE_OPTIONS.loaded) {
       DELEGATE_OPTIONS.rows = c.rows; DELEGATE_OPTIONS.loaded = true;
     }
     return rpc('get_delegate_options', { p_token:getToken() }, 20000);
   }).then(function(rows) {
+    if (stale(gen) || rows == null) return;
     DELEGATE_OPTIONS.rows = Array.isArray(rows) ? rows : ((rows && Array.isArray(rows.list)) ? rows.list : []);
     DELEGATE_OPTIONS.loaded = true;
     return RHMediaCache.kvSet('delegateOptions', { rows:DELEGATE_OPTIONS.rows, at:Date.now(), release:RH_HTML_RELEASE });
   }).catch(function(e) { console.warn('[ReHolz] Delegate reference prewarm skipped:', e && e.message || e); });
-  return Promise.all([masterTask, delegateTask]);
+  var work = Promise.all([masterTask, delegateTask]);
+  RH_TIMEOFF_PREWARM_GEN = gen;
+  RH_TIMEOFF_PREWARM_PROMISE = work.then(function(result) {
+    if (RH_TIMEOFF_PREWARM_GEN === gen) RH_TIMEOFF_PREWARM_PROMISE = null;
+    return result;
+  }, function(error) {
+    if (RH_TIMEOFF_PREWARM_GEN === gen) RH_TIMEOFF_PREWARM_PROMISE = null;
+    throw error;
+  });
+  return RH_TIMEOFF_PREWARM_PROMISE;
 }
 
 var H7_TIMEOFF_CODES = ['CIH','CBA','CKA','CM','CMA','CKTN','CTPDP'];
@@ -8284,7 +8340,7 @@ var RH_REIMBURSEMENT_STATE = { category:'ENTERTAIN', balance:null, requests:[], 
 function rhIsHybridUser(){
   var u=(window.S&&S.user)||{},p=u.employee||u.profile||u;
   var code=p.job_code||p.jobCode||p.kode_jabatan||u.job_code||u.jobCode||u.kode_jabatan||'';
-  return String(code).trim().toUpperCase()==='HYBRID';
+  return String(code).trim().toUpperCase()==='HYBRID' && !(typeof isAdminReadOnly==='function' && isAdminReadOnly());
 }
 function syncReimbursementMenuVisibility(){
   var visible=rhIsHybridUser();
@@ -8426,25 +8482,65 @@ function paintReimbursementPage(){
   var host=document.getElementById('reimbursementApp');if(!host)return;
   var b=RH_REIMBURSEMENT_STATE.balance||{},period=b.period||{},cat=RH_REIMBURSEMENT_STATE.category,active=reimbursementCategoryData();
   var title=cat==='ENTERTAIN'?'Entertain':'Transport';
-  var cap=Number(active.budget||active.cap||active.budget_amount||0);
-  var spent=Number(active.spent||active.approved||active.used||0),reserved=Number(active.pending_reserved||active.reserved||0);
-  var available=Number(active.available==null?Math.max(0,cap-spent-reserved):active.available);
+  function categoryInfo(key){
+    var item=b[key]||b[key.toUpperCase()]||{};
+    var cap=Number(item.budget||item.cap||item.budget_amount||0);
+    var spent=Number(item.spent||item.approved||item.used||0);
+    var reserved=Number(item.pending_reserved||item.reserved||0);
+    var available=Number(item.available==null?Math.max(0,cap-spent-reserved):item.available);
+    return {cap:cap,spent:spent,reserved:reserved,available:available};
+  }
+  var activeInfo=categoryInfo(cat==='ENTERTAIN'?'entertain':'transport');
+  var entertainInfo=categoryInfo('entertain'),transportInfo=categoryInfo('transport');
+  var available=Number(active.available==null?activeInfo.available:active.available);
+  var spent=Number(active.spent||active.approved||active.used||activeInfo.spent);
+  var reserved=Number(active.pending_reserved||active.reserved||activeInfo.reserved);
   var periodText=(period.start_date||b.period_start||'')+' - '+(period.end_date||b.period_end||'');
   var history=RH_REIMBURSEMENT_STATE.requests.map(function(x){
     var status=String(x.status||x.final_status||'PENDING').toUpperCase();
     var tone=/DISETUJUI|APPROVED/.test(status)?'ok':(/DITOLAK|REJECT/.test(status)?'no':'warn');
+    var statusLabel=status.replace(/_/g,' ');
     var catName=String(x.category||'').toUpperCase()==='ENTERTAIN'?'Entertain':'Transport';
     var requestId=reimbursementRequestId(x);
-    return '<div class="reimbursement-history-item" role="button" tabindex="0" style="cursor:pointer" onclick="openReimbursementHistoryDetail(\''+esc(requestId)+'\')"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(catName)+'</b><span class="rk-pill '+tone+'">'+esc(status.replace(/_/g,' '))+'</span></div><div style="margin-top:5px">'+esc(x.request_date||x.tanggal||'')+' · <b>'+reimbursementMoney(x.amount||x.nominal)+'</b></div><small>'+esc(x.note||x.catatan||'')+'</small>'+(Number(x.over_budget_amount||0)>0?'<div class="reimbursement-muted" style="color:#B42318">Overbudget: '+reimbursementMoney(x.over_budget_amount)+'</div>':'')+'</div>';
+    var dateLabel=String(x.request_date||x.tanggal||'-');
+    var amountLabel=reimbursementMoney(x.amount||x.nominal);
+    var note=String(x.note||x.catatan||'');
+    var over=Number(x.over_budget_amount||0);
+    return '<button type="button" class="reimbursement-history-item" aria-label="Buka pengajuan '+esc(catName)+' '+esc(dateLabel)+' '+esc(amountLabel)+'" onclick="openReimbursementHistoryDetail(\''+esc(requestId)+'\')">'+
+      '<span class="reimbursement-history-top"><span class="reimbursement-history-category">'+esc(catName)+'</span><span class="rk-pill '+tone+'">'+esc(statusLabel)+'</span></span>'+
+      '<span class="reimbursement-history-main"><strong>'+esc(amountLabel)+'</strong><span>'+esc(dateLabel)+'</span></span>'+
+      (note?'<span class="reimbursement-history-note">'+esc(note)+'</span>':'')+
+      (over>0?'<span class="reimbursement-history-over">Overbudget '+reimbursementMoney(over)+'</span>':'')+
+      '<span class="reimbursement-history-arrow" aria-hidden="true">›</span></button>';
   }).join('');
-  host.innerHTML='<div class="reimbursement-summary reimbursement-summary-single"><div class="reimbursement-balance"><small>TERSEDIA UNTUK DIAJUKAN</small><strong>'+reimbursementMoney(available)+'</strong><span>Disetujui '+reimbursementMoney(spent)+' · Menunggu '+reimbursementMoney(reserved)+'</span><small class="reimbursement-period">Periode '+esc(periodText)+'</small></div></div>'+
-    '<div class="reimbursement-tabs"><button type="button" class="'+(cat==='ENTERTAIN'?'on':'')+'" onclick="setReimbursementCategory(\'ENTERTAIN\')">Entertain</button><button type="button" class="'+(cat==='TRANSPORT'?'on':'')+'" onclick="setReimbursementCategory(\'TRANSPORT\')">Transport</button></div>'+
-    '<section class="card"><h3>Pengajuan Reimbursement '+title+'</h3><div class="reimbursement-field"><label for="rhReimbursementDate">Tanggal pengeluaran</label><input id="rhReimbursementDate" type="date" min="'+esc(period.start_date||b.period_start||'')+'" max="'+esc(typeof jakartaTodayISO==='function'?jakartaTodayISO():new Date().toISOString().slice(0,10))+'" value="'+esc(typeof jakartaTodayISO==='function'?jakartaTodayISO():new Date().toISOString().slice(0,10))+'"></div>'+
-    '<div class="reimbursement-field"><label for="rhReimbursementAmount">Nominal</label><input id="rhReimbursementAmount" type="number" min="1" step="1000" inputmode="numeric" placeholder="Masukkan nominal" oninput="updateReimbursementSubmitButton()"></div>'+
-    '<div class="reimbursement-field"><label for="rhReimbursementNote">Catatan <span id="rhReimbursementNoteRequired" class="reimbursement-muted">(opsional)</span></label><textarea id="rhReimbursementNote" rows="3" placeholder=""></textarea></div>'+
-    '<div class="reimbursement-field"><label for="rhReimbursementFile">Bukti transaksi <b style="color:#B42318">(wajib)</b></label><input id="rhReimbursementFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required><small class="reimbursement-muted">JPG, PNG, WEBP, atau PDF · Maksimal 8 MB</small></div>'+
-    '<button class="btn btn-blue reimbursement-submit" id="rhReimbursementSubmit" type="button" onclick="submitReimbursementRequest()">Ajukan Reimbursement</button></section>'+
-    '<section style="margin-top:18px"><div class="sec-title"><h2>Riwayat Reimbursement</h2><button class="btn btn-ghost" style="width:auto;padding:7px 10px;font-size:12px" onclick="loadReimbursementPage()">Refresh</button></div>'+(history||'<div class="card reimbursement-muted">Belum ada pengajuan Reimbursement pada akun ini.</div>')+'</section>';
+  host.innerHTML=
+    '<section class="reimbursement-summary reimbursement-summary-single" aria-label="Ringkasan saldo">'+
+      '<div class="reimbursement-balance">'+
+        '<div class="reimbursement-balance-main"><small>SALDO TERSEDIA</small><strong>'+reimbursementMoney(available)+'</strong><span class="reimbursement-period">Periode '+esc(periodText)+'</span></div>'+
+        '<div class="reimbursement-balance-breakdown"><div><small>Disetujui</small><b>'+reimbursementMoney(spent)+'</b></div><div><small>Menunggu</small><b>'+reimbursementMoney(reserved)+'</b></div></div>'+
+      '</div>'+
+    '</section>'+
+    '<div class="reimbursement-tabs" role="tablist" aria-label="Kategori Reimbursement">'+
+      '<button type="button" role="tab" aria-selected="'+(cat==='ENTERTAIN'?'true':'false')+'" class="'+(cat==='ENTERTAIN'?'on':'')+'" onclick="setReimbursementCategory(\'ENTERTAIN\')"><span>Entertain</span><small>Tersedia '+reimbursementMoney(entertainInfo.available)+'</small></button>'+
+      '<button type="button" role="tab" aria-selected="'+(cat==='TRANSPORT'?'true':'false')+'" class="'+(cat==='TRANSPORT'?'on':'')+'" onclick="setReimbursementCategory(\'TRANSPORT\')"><span>Transport</span><small>Tersedia '+reimbursementMoney(transportInfo.available)+'</small></button>'+
+    '</div>'+
+    '<div class="reimbursement-workspace">'+
+      '<section class="card reimbursement-form-card" aria-labelledby="rhReimbursementFormTitle">'+
+        '<header class="reimbursement-section-head"><div><span class="reimbursement-eyebrow">FORM PENGAJUAN</span><h3 id="rhReimbursementFormTitle">Pengajuan '+title+'</h3><p>Catat pengeluaran dan lampirkan bukti transaksi.</p></div><span class="reimbursement-category-chip">'+title+'</span></header>'+
+        '<div class="reimbursement-form-grid">'+
+          '<div class="reimbursement-field reimbursement-field-date"><label for="rhReimbursementDate">Tanggal pengeluaran</label><input id="rhReimbursementDate" type="date" min="'+esc(period.start_date||b.period_start||'')+'" max="'+esc(typeof jakartaTodayISO==='function'?jakartaTodayISO():new Date().toISOString().slice(0,10))+'" value="'+esc(typeof jakartaTodayISO==='function'?jakartaTodayISO():new Date().toISOString().slice(0,10))+'"></div>'+
+          '<div class="reimbursement-field reimbursement-field-amount"><label for="rhReimbursementAmount">Nominal pengeluaran</label><div class="reimbursement-input-prefix"><span>Rp</span><input id="rhReimbursementAmount" type="number" min="1" step="1000" inputmode="numeric" placeholder="0" oninput="updateReimbursementSubmitButton()"></div></div>'+
+          '<div class="reimbursement-field reimbursement-field-note"><label for="rhReimbursementNote">Catatan pengeluaran <span id="rhReimbursementNoteRequired" class="reimbursement-muted">(opsional)</span></label><textarea id="rhReimbursementNote" rows="4" placeholder="Jelaskan keperluan pengeluaran secara singkat"></textarea></div>'+
+          '<div class="reimbursement-field reimbursement-field-file"><label for="rhReimbursementFile">Bukti transaksi <b style="color:#B42318">Wajib</b></label><input id="rhReimbursementFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required><small class="reimbursement-muted">Format JPG, PNG, WEBP, atau PDF. Ukuran maksimal 8 MB.</small></div>'+
+        '</div>'+
+        '<div id="rhReimbursementOverNote" class="reimbursement-over-note" role="note"><b>Pengajuan melebihi saldo tersedia.</b><span>Catatan pengeluaran wajib diisi untuk pengajuan Over Budget.</span></div>'+
+        '<footer class="reimbursement-form-footer"><span>Pastikan tanggal, nominal, dan bukti transaksi sudah benar.</span><button class="btn btn-blue reimbursement-submit" id="rhReimbursementSubmit" type="button" onclick="submitReimbursementRequest()">Ajukan</button></footer>'+
+      '</section>'+
+      '<aside class="card reimbursement-history-panel" aria-labelledby="rhReimbursementHistoryTitle">'+
+        '<header class="reimbursement-history-head"><div><span class="reimbursement-eyebrow">PEMANTAUAN</span><h3 id="rhReimbursementHistoryTitle">Riwayat Pengajuan</h3><p>Periksa status pengajuan sebelumnya.</p></div><button class="btn btn-ghost reimbursement-refresh" type="button" onclick="loadReimbursementPage()" aria-label="Muat ulang riwayat">Muat ulang</button></header>'+
+        '<div class="reimbursement-history-list">'+(history||'<div class="reimbursement-history-empty"><span class="reimbursement-history-empty-icon">↗</span><b>Belum ada pengajuan</b><span>Pengajuan yang Anda kirim akan tampil di sini.</span></div>')+'</div>'+
+      '</aside>'+
+    '</div>';
   updateReimbursementSubmitButton();
 }
 function openReimbursementHistoryDetail(id){
@@ -8461,7 +8557,7 @@ function updateReimbursementSubmitButton(){
   if(!amountEl||!btn)return;var amount=Number(amountEl.value||0),available=Number(reimbursementCategoryData().available||0),over=amount>available&&amount>0;
   btn.textContent=over?'Ajukan Over Budget':'Ajukan';btn.classList.toggle('over',over);
   if(noteLabel)noteLabel.textContent=over?'(wajib untuk Over Budget)':'(opsional)';
-  if(overNote)overNote.style.display=over?'block':'none';
+  if(overNote){overNote.style.display=over?'block':'none';overNote.classList.toggle('is-visible',over);}
 }
 function submitReimbursementRequest(){
   if(!rhIsHybridUser()){toast('Reimbursement hanya tersedia untuk job code HYBRID.');return;}
@@ -8791,17 +8887,26 @@ function renderEmpList(q) {
   hydrateFaces();
 }
 
+var RH_TEAM_LOAD_PROMISE = null;
+var RH_TEAM_LOAD_GEN = -1;
 function loadTeam() {
   if (!S.approver) return Promise.resolve([]);
-  var gen = SESSION_GEN;
-  return api('getTeamActivity', [todayISO()]).then(function(r) {
+  var gen = SESSION_GEN, nik = String(S.user && S.user.nik || ''), date = todayISO();
+  if (RH_TEAM_LOAD_PROMISE && RH_TEAM_LOAD_GEN === gen) return RH_TEAM_LOAD_PROMISE;
+  RH_TEAM_LOAD_GEN = gen;
+  RH_TEAM_LOAD_PROMISE = api('getTeamActivity', [date]).then(function(r) {
     if (stale(gen)) return [];
     var l = (r && r.list) || [];
     DATA.team = l;
+    DATA._teamMeta = { nik:nik, gen:gen, date:date, at:Date.now() };
     l.forEach(function(x) { DATA.faceVer[x.nik] = x.faceVer; });
     renderTeam(l.slice(0, 12));
     return l;
-  }).catch(function() { return []; });
+  }).catch(function() { return []; }).then(function(rows) {
+    if (RH_TEAM_LOAD_GEN === gen) RH_TEAM_LOAD_PROMISE = null;
+    return rows;
+  });
+  return RH_TEAM_LOAD_PROMISE;
 }
 
 function renderTeam(list) {
@@ -8819,9 +8924,12 @@ function loadTeamActivity() {
   $('teamDate').value = d;
   $('teamDateLbl').textContent = tglID(d);
   $('teamList').innerHTML = '<div class="empty">Memuat...</div>';
+  var teamGen = SESSION_GEN, teamNik = String(S.user && S.user.nik || '');
   api('getTeamActivity', [d]).then(function(r) {
+    if (stale(teamGen)) return;
     var l = (r && r.list) || [];
     DATA.team = l;
+    DATA._teamMeta = { nik:teamNik, gen:teamGen, date:d, at:Date.now() };
     l.forEach(function(x) { DATA.faceVer[x.nik] = x.faceVer; });
     var hadir = l.filter(function(x) { return x.status === 'HADIR'; }).length;
     var belum = l.length - hadir;
@@ -9221,8 +9329,11 @@ function loadEmployees(force) {
   });
 }
 
+var RH_KAR_MGR_PROMISE = null;
+var RH_KAR_MGR_PROMISE_GEN = null;
 function loadKaryawanMgr(force) {
   if (!S.user || (S.user.role !== 'HR' && S.user.role !== 'ADMIN' && S.user.role !== 'SUPERADMIN')) { toast('Akses ditolak.'); go('s-home'); return Promise.resolve(false); }
+  if (RH_KAR_MGR_PROMISE && RH_KAR_MGR_PROMISE_GEN === SESSION_GEN) return RH_KAR_MGR_PROMISE;
   var had = !!(DATA.karList && DATA.karList.length);
   if (!force && had && DATA._karAt && (Date.now() - DATA._karAt) < 30000) {
     renderKarList('');
@@ -9238,13 +9349,20 @@ function loadKaryawanMgr(force) {
       }
     });
   }
-  return Promise.resolve(loadKaryawanMgrNet()).then(function(r) {
+  var gen = SESSION_GEN;
+  var request = Promise.resolve(loadKaryawanMgrNet()).then(function(r) {
+    if (gen !== SESSION_GEN || !S.user) return false;
     if (DATA.karList && DATA.karList.length) {
       DATA._karAt = Date.now();
       try { RHMediaCache.kvSet('karData', { list: DATA.karList, opts: DATA.karOpts, at: DATA._karAt }); } catch (e) {}
     }
     return r;
+  }).finally(function() {
+    if (RH_KAR_MGR_PROMISE === request) { RH_KAR_MGR_PROMISE = null; RH_KAR_MGR_PROMISE_GEN = null; }
   });
+  RH_KAR_MGR_PROMISE = request;
+  RH_KAR_MGR_PROMISE_GEN = gen;
+  return request;
 }
 
 function renderKarList(q) {
@@ -10759,6 +10877,13 @@ Object.assign(window, {
 Object.assign(window, {
   S: S, DATA: DATA, CACHE: CACHE, api: api, esc: esc, initials: initials, toast: toast,
   tglID: tglID, todayISO: todayISO, getToken: getToken, getSb: getSb,
+  // One broker for all frontend RPC reads: token injection, timeout, session guard and dedupe.
+  rhRpc: function(fn, params, timeoutMs) {
+    var args = Object.assign({}, params || {});
+    if (!Object.prototype.hasOwnProperty.call(args, 'p_token')) args.p_token = getToken();
+    return rpc(fn, args, timeoutMs);
+  },
+  rhReadDedupe: rhReadDedupe, RH_RPC_READ_WHITELIST: RH_RPC_READ_WHITELIST,
   hydrateFaces: hydrateFaces, faceWrap: faceWrap, avaInner: avaInner,
   loadMyRequests: loadMyRequests, RHMediaCache: RHMediaCache,
   // Module-scoped helpers shared with the classic-script desktop console.
@@ -11985,6 +12110,13 @@ function showHrPlaceholder(title, group, description) {
       </div>
 
       <div class="rk-group">
+        <button type="button" class="rk-parent" onclick="RHDeskApi.rkToggleGroup(this)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#007850" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6M7 16h4"/></svg>Reimbursement<span class="rk-chev">▾</span></button>
+        <div class="rk-sub">
+          <button data-p="reimbursementRequest"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#007850" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5M8 17h4"/></svg>Pengajuan Reimbursement</button>
+        </div>
+      </div>
+
+      <div class="rk-group">
         <button type="button" class="rk-parent" onclick="RHDeskApi.rkToggleGroup(this)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#007850" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>Pengajuan Time Off<span class="rk-chev">▾</span></button>
         <div class="rk-sub">
           <button data-p="timeoffRequest" data-timeoff-group="cuti"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#007850" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>Cuti Karyawan</button>
@@ -12078,6 +12210,7 @@ function showHrPlaceholder(title, group, description) {
     <section class="rk-page" id="rkp-rekap"></section>
     <section class="rk-page" id="rkp-cuti"></section>
     <section class="rk-page" id="rkp-timeoffRequest"></section>
+    <section class="rk-page" id="rkp-reimbursementRequest"><div class="rk-reimbursement-desktop-page"><div id="rkDeskReimbursementMount"></div></div></section>
     <section class="rk-page" id="rkp-lap"></section>
     <section class="rk-page" id="rkp-users"></section>
     <section class="rk-page" id="rkp-log"></section>
@@ -12150,6 +12283,7 @@ function showHrPlaceholder(title, group, description) {
     calendar: ['Kalender Kerja', 'Kelola hari libur nasional, hari kerja, dan hari libur'],
     cuti: ['Rekap Time Off', 'Rekapitulasi Ketidak Hadiran Karyawan'],
     timeoffRequest: ['Cuti Karyawan', 'Daftar pengajuan cuti karyawan'],
+    reimbursementRequest: ['Pengajuan Reimbursement', 'Pengajuan dan riwayat reimbursement khusus karyawan Hybrid'],
     'my-approvals': ['Menunggu Persetujuan', 'Tugas yang membutuhkan tindakan dan pemantauan seluruh pengajuan'],
     loc: ['Lokasi Kantor', 'Lokasi presensi dan radius area per cabang'],
     lap: ['Laporan HR', 'Laporan bulanan HR untuk dicetak dan diekspor'],
@@ -12189,11 +12323,16 @@ function showHrPlaceholder(title, group, description) {
   function desktopRole(){return String(window.S&&S.user&&S.user.role||'').toUpperCase();}
   function isDesktopAdmin(){return desktopRole()==='ADMIN'||desktopRole()==='SUPERADMIN';}
   function isDesktopLimited(){return !!(window.S&&S.user)&&!isDesktopAdmin();}
-  function updateDesktopLimitedOverlay(){var main=document.querySelector('#rhDesk .rk-main');if(!main)return;var overlay=document.getElementById('rkLimitedOverlay');if(!overlay){overlay=document.createElement('div');overlay.id='rkLimitedOverlay';overlay.textContent='Limited Access';main.appendChild(overlay);}overlay.style.display=isDesktopLimited()&&cur!=='timeoffRequest'&&cur!=='my-approvals'?'flex':'none';}
+  function isDesktopHybrid(){try{return typeof window.rhIsHybridUser==='function'&&window.rhIsHybridUser();}catch(e){return false;}}
+  function updateDesktopLimitedOverlay(){var main=document.querySelector('#rhDesk .rk-main');if(!main)return;var overlay=document.getElementById('rkLimitedOverlay');if(!overlay){overlay=document.createElement('div');overlay.id='rkLimitedOverlay';overlay.textContent='Limited Access';main.appendChild(overlay);}var blockedReimbursement=cur==='reimbursementRequest'&&!isDesktopHybrid();var blockedRole=isDesktopLimited()&&cur!=='timeoffRequest'&&cur!=='my-approvals'&&cur!=='reimbursementRequest';overlay.style.display=(blockedReimbursement||blockedRole)?'flex':'none';}
+  var reimbursementAppOriginalParent=null;
+  function renderDesktopReimbursementRequest(){var app=document.getElementById('reimbursementApp'),mount=document.getElementById('rkDeskReimbursementMount');if(!app||!mount)return;if(!reimbursementAppOriginalParent)reimbursementAppOriginalParent=app.parentNode;if(app.parentNode!==mount)mount.appendChild(app);if(typeof window.loadReimbursementPage==='function')window.loadReimbursementPage();}
+  function restoreReimbursementMobileMount(){var app=document.getElementById('reimbursementApp');if(app&&reimbursementAppOriginalParent&&app.parentNode!==reimbursementAppOriginalParent)reimbursementAppOriginalParent.appendChild(app);}
   function activate() {
-    if (document.body.classList.contains('rh-desk-on')) { document.body.classList.toggle('rh-role-staff',isDesktopLimited()); updateDesktopLimitedOverlay(); return; }
+    if (document.body.classList.contains('rh-desk-on')) { document.body.classList.toggle('rh-role-staff',isDesktopLimited()); document.body.classList.toggle('rh-reim-limited',!isDesktopHybrid()); updateDesktopLimitedOverlay(); return; }
     document.body.classList.add('rh-desk-on');
     document.body.classList.toggle('rh-role-staff',isDesktopLimited());
+    document.body.classList.toggle('rh-reim-limited',!isDesktopHybrid());
     var d = document.getElementById('rhDesk');
     if (d) d.setAttribute('aria-hidden', 'false');
     fillUser();
@@ -12202,7 +12341,7 @@ function showHrPlaceholder(title, group, description) {
     updateDesktopLimitedOverlay();
     if(isDesktopLimited()){document.querySelectorAll('#rhDesk .rk-group').forEach(function(g){g.classList.remove('closed');});}
     var adminNotice=document.getElementById('rhAdminReadOnlyNotice');
-    if(!adminNotice){adminNotice=document.createElement('div');adminNotice.id='rhAdminReadOnlyNotice';adminNotice.className='rk-readonly-admin-note';adminNotice.textContent='Akses Admin hanya untuk melihat. Perubahan dan persetujuan memerlukan Superadmin.';var main=document.querySelector('#rhDesk .rk-main');if(main)main.insertBefore(adminNotice,main.firstChild);}
+    if(!adminNotice){adminNotice=document.createElement('div');adminNotice.id='rhAdminReadOnlyNotice';adminNotice.className='rk-readonly-admin-note';adminNotice.textContent='Akses Admin hanya untuk melihat data administrasi. Clock In dan Clock Out pribadi tetap tersedia.';var main=document.querySelector('#rhDesk .rk-main');if(main)main.insertBefore(adminNotice,main.firstChild);}
     adminNotice.style.display=(window.S&&S.user&&String(S.user.role||'').toUpperCase()==='ADMIN')?'block':'none';
     goPage(cur);
     if(!isDesktopLimited()){
@@ -12218,6 +12357,8 @@ function showHrPlaceholder(title, group, description) {
   }
   function deactivate() {
     document.body.classList.remove('rh-desk-on');
+    document.body.classList.remove('rh-reim-limited');
+    restoreReimbursementMobileMount();
     try { setDeskNotifPanel(false); } catch (e) {}
     var d = document.getElementById('rhDesk');
     if (d) d.setAttribute('aria-hidden', 'true');
@@ -12267,13 +12408,14 @@ function showHrPlaceholder(title, group, description) {
       rekap: ['Laporan Absensi', ''],
       'incentive-settings': ['Setting Insentif', ''],
       'incentive-employee': ['Rekap Insentif', 'Rincian nominal, perhitungan harian, dan persetujuan'],
+      reimbursementRequest: ['Pengajuan Reimbursement', 'Ajukan dan pantau reimbursement karyawan Hybrid'],
       
     };
     var heading = headerTitles[p] || null;
     if (pageHeading) pageHeading.style.display = heading ? 'flex' : 'none';
     if (T) T.textContent = heading ? heading[0] : '';
     if (Sb) Sb.textContent = heading ? heading[1] : '';
-    var limitedAccess=isDesktopLimited()&&p!=='timeoffRequest'&&p!=='my-approvals';
+    var limitedAccess=(isDesktopLimited()&&p!=='timeoffRequest'&&p!=='my-approvals'&&p!=='reimbursementRequest') || (p==='reimbursementRequest'&&!isDesktopHybrid());
     if(limitedAccess){if(pageHeading)pageHeading.style.display='none';if(T)T.textContent='';if(Sb)Sb.textContent='';}
     if (!limitedAccess) {
       if (p === 'dash') renderDash();
@@ -12296,6 +12438,7 @@ function showHrPlaceholder(title, group, description) {
       if (p === 'incentive-settings') renderIncentiveSettingsPage();
       if (p === 'incentive-employee') renderIncentiveEmployeePage();
     }
+    if (p === 'reimbursementRequest') renderDesktopReimbursementRequest();
     if (p === 'timeoffRequest') renderTimeOffRequestPage(timeOffRequestGroup);
     updateDesktopLimitedOverlay();
     /* Buka otomatis grup sidebar yang memuat halaman aktif (pola HRMSMBM) */
@@ -12309,10 +12452,12 @@ function showHrPlaceholder(title, group, description) {
     if (typeof loadKaryawanMgr === 'function') return Promise.resolve(loadKaryawanMgr(!!force));
     return Promise.reject(new Error('loadKaryawanMgr is not available'));
   }
-  function refreshBadge() {
+  function refreshBadge(queueResult) {
+    // Reuse a queue result already loaded by the caller; never fetch the same queue twice.
+    var queuePromise = queueResult ? Promise.resolve(queueResult) : window.loadApprovalQueueCanonical();
     // Return a promise so callers can safely await badge refresh after an approval.
     return Promise.all([
-    window.loadApprovalQueueCanonical().then(function (result) {
+    queuePromise.then(function (result) {
       var data=result&&result.data||{}, n=Number(data.total||0);
       var b=document.getElementById('rkAprBadge');
       if(b){b.style.display=n>0?'':'none';b.textContent=n;}
@@ -12370,19 +12515,10 @@ function showHrPlaceholder(title, group, description) {
       return;
     }
     el.innerHTML = '<div class="rk-loading">Memuat dashboard...</div>';
-    // Katalog karyawan penuh & progres foto dimuat di latar; dashboard dilukis dari data ringan lebih dulu.
-    ensureKar(false).catch(function () {}).then(function () {
-      var el2 = document.getElementById('rkp-dash');
-      if (el2 && cur === 'dash' && el2.dataset.filled === '1') { paintDash(el2); }
-    });
-    api('getFaceProgress', [], 20000).catch(function () { return null; }).then(function (fp) {
-      if (fp) dashCache.fp = fp;
-      var el2 = document.getElementById('rkp-dash');
-      if (el2 && cur === 'dash' && el2.dataset.filled === '1') paintDash(el2);
-    });
+    // Dashboard only needs aggregate workforce fields. Do not fetch the full HR directory or unused face progress here.
     Promise.all([
       window.loadApprovalQueueCanonical().then(function (result) { return result && result.data || null; }).catch(function () { return null; }),
-      rpcOptional('hr_get_employee_directory', {}).catch(function () { return null; })
+      rpcOptional('hr_get_employee_directory_summary', {}).catch(function () { return null; })
     ]).then(function (rs) {
       dashCache.ap = rs[0] || dashCache.ap || null;
       var dir = rs[1];
@@ -12391,7 +12527,7 @@ function showHrPlaceholder(title, group, description) {
       dashCache.at = Date.now();
       paintDash(el);
       fillDashToday();
-      refreshBadge();
+      refreshBadge({ data: dashCache.ap || {} });
     }).catch(function () {
       // Keep a useful dashboard from the current employee cache if an optional source is offline.
       dashCache.at = Date.now();
@@ -12750,9 +12886,9 @@ function showHrPlaceholder(title, group, description) {
       var why = [], expired = dashExpiredDays(x, today);
       if (expired !== null) why.push('Contract expired ' + expired + ' day' + (expired === 1 ? '' : 's') + ' ago');
       var missing = [];
-      if (!String(x.phone || '').trim()) missing.push('Nomor Telepon');
-      if (!String(x.religion || '').trim()) missing.push('Agama');
-      if (!String(x.education || '').trim()) missing.push('Pendidikan');
+      if (!String(x.phone || '').trim() && x.has_phone !== true) missing.push('Nomor Telepon');
+      if (!String(x.religion || '').trim() && x.has_religion !== true) missing.push('Agama');
+      if (!String(x.education || '').trim() && x.has_education !== true) missing.push('Pendidikan');
       if (missing.length) why.push('Missing data: ' + missing.join(', '));
       return { employee:x, reasons:why };
     }).filter(function (x) { return x.reasons.length > 0; }).sort(function(a,b){ return (dashExpiredDays(b.employee,today)||0) - (dashExpiredDays(a.employee,today)||0); });
@@ -12768,7 +12904,19 @@ function showHrPlaceholder(title, group, description) {
       var profile = ev.target.closest && ev.target.closest('[data-dash-open-profile]');
       if (profile) { var nik=profile.getAttribute('data-dash-open-profile'); shade.classList.remove('on'); window.setTimeout(function(){ var directoryPeople=dashPeople(); if(directoryPeople.length) empUI.fullList=directoryPeople; empOpenDetails(nik); }, 40); return; }
       var edit = ev.target.closest && ev.target.closest('[data-dash-attention-edit]');
-      if (edit) { var editNik=edit.getAttribute('data-dash-attention-edit'); shade.classList.remove('on'); window.setTimeout(function(){ var directoryPeople=dashPeople(); if(directoryPeople.length) empUI.fullList=directoryPeople; empOpenEditor(editNik,'edit'); }, 40); }
+      if (edit) {
+        var editNik=edit.getAttribute('data-dash-attention-edit'); shade.classList.remove('on');
+        if (!isSuperAdminRole()) { rkToast('Akses lihat saja. Hanya Superadmin dapat mengubah data karyawan.'); return; }
+        window.setTimeout(function(){
+          // Full personal fields are fetched only after an explicit edit action.
+          rpcOptional('hr_get_employee_directory', {}).then(function(dir){
+            var dirRows = Array.isArray(dir) ? dir : (dir && (Array.isArray(dir.list) ? dir.list : (Array.isArray(dir.data) ? dir.data : null)));
+            if (!dirRows) { rkToast('Data lengkap karyawan gagal dimuat. Coba buka menu Data Karyawan.'); return; }
+            empUI.fullList = dirRows.map(empNormalize);
+            empOpenEditor(editNik,'edit');
+          });
+        }, 40);
+      }
     });
     shade.addEventListener('change', function(ev){
       if (ev.target.id === 'rkDashMoveYear') dashActionYear = +ev.target.value;
@@ -12930,43 +13078,27 @@ function showHrPlaceholder(title, group, description) {
       '<div class="rk-stat-delta" style="color:#8AA093">' + escH(sub || '') + '</div></div></div>';
   }
 
-  /* RPC opsional: tidak error bila backend belum memasang */
+  /* RPC opsional: tetap non-blocking untuk fitur tambahan, tetapi melalui broker utama. */
   function rpcOptional(fn, params) {
-    if (window.RH_RPC_READ_WHITELIST && window.RH_RPC_READ_WHITELIST.test(String(fn || '')) && typeof window.rhReadDedupe === 'function') {
-      return window.rhReadDedupe('opt|' + String(fn) + '|' + JSON.stringify(params || {}), function () { return rpcOptionalDirect(fn, params); });
-    }
     return rpcOptionalDirect(fn, params);
   }
   function rpcOptionalDirect(fn, params) {
-    if (window.ensureAdminWriteAllowed && window.isAdminReadOnly && window.isAdminReadOnly() && /^(submit_attendance_with_photo|submit_cuti|process_approval|process_cuti_approval|hr_set_role|hr_update_|hr_create_|hr_add_|hr_delete_|hr_deactivate|hr_reactivate|hr_reset_|hr_grant_|hr_revoke_|hr_save_|hr_upsert_|hr_import_|admin_delete_|grant_face_registration|grant_mass_face_registration|reset_face_registration|revoke_face_session|hr_save_face_reference|save_lokasi_kantor|delete_lokasi_kantor|save_attendance_rule|save_calendar_override)/i.test(String(fn || ''))) {
+    if (window.ensureAdminWriteAllowed && window.isAdminReadOnly && window.isAdminReadOnly() && /^(submit_cuti|process_approval|process_cuti_approval|hr_set_role|hr_update_|hr_create_|hr_add_|hr_delete_|hr_deactivate|hr_reactivate|hr_reset_|hr_grant_|hr_revoke_|hr_save_|hr_upsert_|hr_import_|admin_delete_|grant_face_registration|grant_mass_face_registration|reset_face_registration|revoke_face_session|hr_save_face_reference|save_lokasi_kantor|delete_lokasi_kantor|save_attendance_rule|save_calendar_override)/i.test(String(fn || ''))) {
       return Promise.resolve({ ok:false, message:'Administrator role is view-only.' });
     }
-    return new Promise(function (resolve) {
-      try {
-        var c = window.supabase && window.__rhSbClient;
-        var use = null;
-        if (typeof getSb === 'function') { use = getSb(); } else { return resolve(null); }
-        Promise.resolve(use).then(function (client) {
-          if (!client) return resolve(null);
-          var p = params || {};
-          p.p_token = getToken();
-          client.rpc(fn, p).then(function (r) {
-            if (r && r.error) {
-              window.__RH_OPTIONAL_RPC_LAST_ERROR = { function: fn, message: r.error.message || String(r.error) };
-              console.warn('[ReHolz] Optional backend function failed:', fn, r.error.message || r.error);
-              return resolve(null);
-            }
-            window.__RH_OPTIONAL_RPC_LAST_ERROR = null;
-            resolve(r ? r.data : null);
-          }).catch(function (err) {
-            window.__RH_OPTIONAL_RPC_LAST_ERROR = { function: fn, message: err && err.message || String(err) };
-            console.warn('[ReHolz] Optional backend function failed:', fn, err && err.message || err);
-            resolve(null);
-          });
-        }).catch(function () { resolve(null); });
-      } catch (e) { resolve(null); }
+    if (typeof window.rhRpc !== 'function') return Promise.resolve(null);
+    var args = Object.assign({}, params || {});
+    var timeout = /hr_get_attendance_summary|hr_get_attendance_monitoring|hr_get_employee_directory|hr_get_personal_file_batch|hr_get_reimbursement_recap|hr_get_incentive_employee_recap/i.test(String(fn || '')) ? 90000 : 30000;
+    return window.rhRpc(fn, args, timeout).then(function(data) {
+      window.__RH_OPTIONAL_RPC_LAST_ERROR = null;
+      return data;
+    }).catch(function(err) {
+      window.__RH_OPTIONAL_RPC_LAST_ERROR = { function:fn, message:err && err.message || String(err), code:err && err.code || null };
+      console.warn('[ReHolz] Optional backend function failed:', fn, err && err.message || err);
+      return null;
     });
   }
+
 
   /* ---------------- EMPLOYEE DIRECTORY (DESKTOP ONLY) ---------------- */
   function empVal(x, keys) {
@@ -13811,7 +13943,7 @@ function showHrPlaceholder(title, group, description) {
     {key:'location_address',label:'Alamat Lokasi'}, {key:'location_coordinate',label:'Koordinat Lokasi'},
     {key:'description',label:'Keterangan'}, {key:'mobile_flag',label:'Aplikasi'}, {key:'status_approval',label:'Status'}
   ];
-  var attMonitorState = { rows: [], payload: null, from: '', to: '', query: '', loaded: false, sortKey:'date', sortDir:'desc', filters:{} };
+  var attMonitorState = { rows: [], payload: null, from: '', to: '', query: '', loaded: false, sortKey:'date', sortDir:'desc', filters:{}, noInDetailKey:'', noInDetailRows:null, noInDetailPromise:null };
   function attMonLocalISO(date) {
     var d = date instanceof Date ? date : new Date();
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -14013,21 +14145,15 @@ function showHrPlaceholder(title, group, description) {
     if(!dateEl||!mapEl)return;var date=dateEl.value;
     if(!date){rkToast('Pilih tanggal presensi.');return;}
     attLiveMapState.date=date;if(btn){btn.disabled=true;btn.textContent='Memuat…';}mapEl.innerHTML='<div class="rk-loading" style="padding:24px">Mengambil data Clock In dan Clock Out…</div>';if(note)note.textContent='';
-    var token=typeof window.getToken==='function'?String(window.getToken()||''):'';
-    if(!token){if(note)note.textContent='Sesi tidak tersedia. Silakan login ulang.';if(btn){btn.disabled=false;btn.textContent='↻ Perbarui Peta';}return;}
-    if(typeof window.getSb!=='function'){
+    if(typeof window.rhRpc!=='function'){
       mapEl.innerHTML='<div class="rk-empty" style="padding:24px">Koneksi data tidak tersedia. Muat ulang aplikasi dan login kembali.</div>';
-      if(note)note.textContent='Supabase client bridge tidak tersedia.';
+      if(note)note.textContent='RPC broker tidak tersedia.';
       if(btn){btn.disabled=false;btn.textContent='↻ Perbarui Peta';}
       return;
     }
-    Promise.resolve().then(function(){return window.getSb();}).then(function(client){
-      if(!client||typeof client.rpc!=='function')throw new Error('Koneksi Supabase tidak tersedia.');
-      return client.rpc('hr_get_attendance_monitoring',{p_token:token,p_start_date:date,p_end_date:date});
-    }).then(function(result){
-      if(!result||result.error)throw new Error(result&&result.error&&(result.error.message||result.error.code)||'Gagal membaca data presensi.');
-      if(!attMonHasPayload(result.data))throw new Error('Format data pemantauan presensi tidak sesuai.');
-      var all=attMonRows(result.data)||[];var active=attendanceMapActiveRows(all,date);var unlocated=attendanceMapActiveRows.missingCoordinates||[];attLiveMapState.rows=active;attLiveMapState.loaded=true;
+    window.rhRpc('hr_get_attendance_monitoring',{p_start_date:date,p_end_date:date},30000).then(function(payload){
+      if(!attMonHasPayload(payload))throw new Error('Format data pemantauan presensi tidak sesuai.');
+      var all=attMonRows(payload)||[];var active=attendanceMapActiveRows(all,date);var unlocated=attendanceMapActiveRows.missingCoordinates||[];attLiveMapState.rows=active;attLiveMapState.loaded=true;
       if(count)count.textContent=(active.length+unlocated.length)+' belum Clock Out · '+active.length+' titik peta';
       var unlocatedBox=document.getElementById('rkAttLiveUnlocated');
       if(unlocatedBox){unlocatedBox.innerHTML=unlocated.length?'<div class="rk-note"><b>'+unlocated.length+' karyawan belum memiliki koordinat valid:</b><ul style="margin:6px 0 0 18px">'+unlocated.map(function(row){return '<li>'+escH(attMonFirst(row,['employee_name','nama','full_name'])||attMonFirst(row,['employee_id','nik'])||'Karyawan')+' ('+escH(attMonFirst(row,['employee_id','nik'])||'—')+')</li>';}).join('')+'</ul></div>':'';}
@@ -14075,8 +14201,19 @@ function showHrPlaceholder(title, group, description) {
     document.getElementById('rkAttMetricClose').addEventListener('click',function(){host.style.display='none';});
     var out=document.getElementById('rkAttMetricBody'),rows=attMonitorState.rows||[],today=attMonLocalISO(new Date());
     if(metric==='noIn'){
-      var token=typeof window.getToken==='function'?String(window.getToken()||''):'';
-      Promise.resolve(window.getSb&&window.getSb()).then(function(client){if(!client||!client.rpc)throw new Error('Koneksi data tidak tersedia');return client.rpc('hr_get_attendance_summary',{p_token:token,p_start_date:attMonitorState.from,p_end_date:attMonitorState.to});}).then(function(res){if(res.error)throw res.error;var list=res.data&&res.data.records||[];list=list.filter(function(r){return String(r.date||'')<today&&r.expected_workday&&!r.has_clock_in&&!r.time_off_code;});out.innerHTML=attMetricTable(list.map(function(r){return {employee_name:r.full_name,employee_id:r.employee_id,date:r.date,shift:r.shift};}));}).catch(function(e){out.textContent='Detail tidak tersedia: '+String(e.message||e);});return;
+      var detailKey=String(SESSION_GEN)+'|'+attMonitorState.from+'|'+attMonitorState.to;
+      if(attMonitorState.noInDetailKey!==detailKey){attMonitorState.noInDetailKey=detailKey;attMonitorState.noInDetailRows=null;attMonitorState.noInDetailPromise=null;}
+      if(!Array.isArray(attMonitorState.noInDetailRows) && !attMonitorState.noInDetailPromise){
+        if(typeof window.rhRpc!=='function'){out.textContent='Detail tidak tersedia: RPC broker tidak ditemukan.';return;}
+        attMonitorState.noInDetailPromise=window.rhRpc('hr_get_attendance_summary',{p_start_date:attMonitorState.from,p_end_date:attMonitorState.to},90000).then(function(payload){
+          var list=payload&&payload.records||[];
+          var rows=list.filter(function(r){return String(r.date||'')<today&&r.expected_workday&&!r.has_clock_in&&!r.time_off_code;}).map(function(r){return {employee_name:r.full_name,employee_id:r.employee_id,date:r.date,shift:r.shift};});
+          if(attMonitorState.noInDetailKey===detailKey)attMonitorState.noInDetailRows=rows;
+          return rows;
+        }).catch(function(error){if(attMonitorState.noInDetailKey===detailKey)attMonitorState.noInDetailPromise=null;throw error;}).then(function(rows){if(attMonitorState.noInDetailKey===detailKey)attMonitorState.noInDetailPromise=null;return rows;});
+      }
+      Promise.resolve(Array.isArray(attMonitorState.noInDetailRows)?attMonitorState.noInDetailRows:attMonitorState.noInDetailPromise).then(function(list){if(out.isConnected)out.innerHTML=attMetricTable(list);}).catch(function(e){if(out.isConnected)out.textContent='Detail tidak tersedia: '+String(e.message||e);});
+      return;
     }
     var picked=[];
     if(metric==='ontime')picked=rows.filter(function(r){return attMetricFinal(r)&&attMonType(r).toLowerCase()==='clock in'&&/ON_TIME|ONTIME|EARLY/.test(String(r.punctuality_status||'').toUpperCase());});
@@ -14092,38 +14229,25 @@ function showHrPlaceholder(title, group, description) {
     if(!from||!to){rkToast('Silakan pilih tanggal awal dan akhir.');return;}
     if(from>to){rkToast('Tanggal awal tidak boleh melewati tanggal akhir.');return;}
     attMonitorState.from=from;attMonitorState.to=to;attMonitorState.loaded=false;
+    attMonitorState.noInDetailKey=String(SESSION_GEN)+'|'+from+'|'+to;
+    attMonitorState.noInDetailRows=null;attMonitorState.noInDetailPromise=null;
     body.innerHTML='<tr><td colspan="19"><div class="rk-loading">Memuat data kehadiran…</div></td></tr>';
     if(btn){btn.disabled=true;btn.textContent='Memuat…';}
-    // Use the exact v10 RPC and surface the server error. The old fallback list
-    // could silently hide a missing function, permission issue, or schema-cache mismatch.
+    // All reads now use the shared broker for token injection, timeout, stale-session guards and dedupe.
     function requestAttendanceMonitoring() {
-      if (typeof window.getSb !== 'function') {
-        return Promise.reject(new Error('Supabase client bridge is unavailable. Reload the latest HTML and service worker.'));
-      }
-      var token = typeof window.getToken === 'function' ? String(window.getToken() || '') : '';
-      if (!token) return Promise.reject(new Error('Session token is missing. Please log out and log in again.'));
-      return Promise.resolve(window.getSb()).then(function(client) {
-        if (!client || typeof client.rpc !== 'function') throw new Error('Supabase client could not be initialized.');
-        return client.rpc('hr_get_attendance_monitoring', {
-          p_token: token,
-          p_start_date: from,
-          p_end_date: to
-        });
-      }).then(function(result) {
-        if (!result) throw new Error('The backend returned no response.');
-        if (result.error) {
-          var e = result.error;
-          var detail = e.message || 'Unknown RPC error';
-          if (e.code) detail += ' [' + e.code + ']';
-          if (/PGRST202|could not find the function|function .* does not exist/i.test(detail)) {
-            detail += '. Fungsi backend belum tersedia atau belum masuk schema cache. Periksa fungsi hr_get_attendance_monitoring di Supabase.';
-          } else if (/Unauthorized|Access denied|42501/i.test(detail)) {
-            detail += '. Pastikan sesi masih aktif dan role akun memiliki akses baca rekap absensi.';
-          }
-          throw new Error(detail);
+      if (typeof window.rhRpc !== 'function') return Promise.reject(new Error('RPC broker tidak tersedia. Muat ulang aplikasi.'));
+      return window.rhRpc('hr_get_attendance_monitoring', { p_start_date:from, p_end_date:to }, 90000).catch(function(error) {
+        var detail=error && error.message || 'Unknown RPC error';
+        if(error && error.code)detail+=' ['+error.code+']';
+        if(/PGRST202|could not find the function|function .* does not exist/i.test(detail)) {
+          detail += '. Fungsi backend belum tersedia atau belum masuk schema cache. Periksa fungsi hr_get_attendance_monitoring di Supabase.';
+        } else if(/Unauthorized|Access denied|42501/i.test(detail)) {
+          detail += '. Pastikan sesi masih aktif dan role akun memiliki akses baca rekap absensi.';
         }
-        if (!attMonHasPayload(result.data)) throw new Error('RPC hr_get_attendance_monitoring returned an unexpected response shape.');
-        return result.data;
+        throw new Error(detail);
+      }).then(function(payload) {
+        if (!attMonHasPayload(payload)) throw new Error('RPC hr_get_attendance_monitoring returned an unexpected response shape.');
+        return payload;
       });
     }
     requestAttendanceMonitoring().then(function(payload){
@@ -14165,6 +14289,7 @@ function showHrPlaceholder(title, group, description) {
     if (/area\s*3/.test(area)) return 'Area 3';
     if (/area\s*4/.test(area)) return 'Area 4';
     if (/area\s*(lain|lainnya|other)/.test(area)) return 'Area Lain';
+    if (area === 'surabaya & sekitarnya' || area === 'sby') return 'Surabaya & Sekitarnya';
     return 'Area Lain';
   }
   function attMonLocationSetting(x) {
@@ -16039,13 +16164,14 @@ function renderMyApprovalsPage(){
     var note=clean(first(['catatan','note','notes','keterangan']));
     var marker=(note.match(/\[\[RHATT=(H|DL[1-4]|DLL|DL5|SDL[1-4]|SDLL|SDL5|P[1-4]?|PL|P5)\]\]/i)||[])[1];
     if(marker)return canonical(marker);
-    var areaMarker=(note.match(/\[\[RHAREA=(A[1-4]|AX|OFFICE)\]\]/i)||[])[1];
+    var areaMarker=(note.match(/\[\[RHAREA=(A[1-4]|AX|OFFICE|SBY)\]\]/i)||[])[1];
     var area=clean(first(['attendance_area','area','work_area','lokasi_area'])).toUpperCase();
     var idx=null;
     if(areaMarker==='OFFICE'||area==='KANTOR'||area==='OFFICE')idx=0;
     else if(areaMarker==='AX'||/AREA\s*(LAIN|LAINNYA|OTHER)/.test(area))idx=5;
     else if(areaMarker&&/^A[1-4]$/i.test(areaMarker))idx=Number(areaMarker.slice(1));
     else {var am=area.match(/AREA\s*([1-4])/);if(am)idx=Number(am[1]);}
+    if(areaMarker==='SBY'||area==='SURABAYA & SEKITARNYA'){return (hasCheckIn||hasCheckOut)?'H':'—';}
     if(mode.indexOf('STANDBY')>=0&&idx!==null){if(idx>=1&&idx<=4)return 'SDL'+idx;if(idx===5)return 'SDLL';return hasCheckIn||hasCheckOut?'H':'—';}
     if(mode.indexOf('PIKET')>=0&&idx!==null){if(idx===0)return 'P';if(idx===5)return 'PL';return 'P'+idx;}
     if((first(['outside_location','outsideLocation'])===true || areaMarker) && idx!==null && idx>0){if(idx===5)return 'DLL';return 'DL'+idx;}
@@ -17179,7 +17305,7 @@ function renderIncentiveFormulaPage(){
       var employees=empCurrentList().map(empNormalize).filter(function(x){return x.nik;}).sort(function(a,b){return String(a.nama||'').localeCompare(String(b.nama||''),'id',{sensitivity:'base'});});
       var opts='<option value="ALL">Semua Karyawan</option>'+employees.map(function(x){return '<option value="'+escH(x.nik)+'">'+escH(x.nama)+' ('+escH(x.nik)+')</option>';}).join('');
       var periodParts=String(incentiveUI.period||incentiveMonthDefault()).match(/^(\d{4})-(\d{2})$/),periodYear=periodParts?periodParts[1]:String(incentiveJakartaParts().year),periodMonth=periodParts?periodParts[2]:'01';
-      el.innerHTML='<div class="rk-toolbar"><span style="flex:1"></span><button class="rk-btn ghost" id="rkIncEmpReload" type="button">Muat Ulang</button><button class="rk-btn" id="rkIncEmpPrint" type="button" disabled>Cetak PDF</button><button class="rk-btn" id="rkIncEmpPrintRekap" type="button" disabled>Cetak Rekap</button><button class="rk-btn ghost" id="rkIncEmpPrintBkk" type="button" disabled>Cetak BKK</button><button class="rk-btn ghost" id="rkIncEmpPrintReimburse" type="button" disabled>Cetak Reimbursement</button></div><div class="rk-card"><div class="rk-incentive-grid rk-incentive-period-grid"><label>Bulan<select class="rk-in" id="rkIncEmpMonth">'+incentiveMonthOptions(incentiveUI.period)+'</select></label><label>Tahun<select class="rk-in" id="rkIncEmpYear">'+incentiveYearOptions(periodYear)+'</select></label><label>Karyawan<select class="rk-in" id="rkIncEmpNik">'+opts+'</select></label><input type="hidden" id="rkIncEmpPeriod" value="'+escH(incentiveUI.period)+'"></div></div>'+(isSuperAdminRole()?'<details class="rk-card" style="margin-top:12px"><summary><b>Input Kurang Bayar Bulan Lalu</b></summary><div class="rk-incentive-grid" style="margin-top:12px"><label>Karyawan<select class="rk-in" id="rkUnderpaymentNik">'+opts+'</select></label><label>Nominal<input class="rk-in" id="rkUnderpaymentAmount" type="number" min="1" step="1" placeholder="Nominal kurang bayar"></label><label style="grid-column:1/-1">Keterangan<input class="rk-in" id="rkUnderpaymentNote" placeholder="Alasan penyesuaian"></label></div><div class="rk-toolbar"><button class="rk-btn" type="button" id="rkUnderpaymentSave" '+(isSuperAdminRole()?'':'disabled')+'>Simpan Kurang Bayar</button></div><div id="rkUnderpaymentResult" class="rk-incentive-note"></div></details>':'')+'<div id="rkIncEmpNotice" class="rk-incentive-note"></div><div id="rkIncEmpPreview" class="rk-card"><div class="rk-empty">Memuat rekap…</div></div>';
+      el.innerHTML='<div class="rk-toolbar"><span style="flex:1"></span><button class="rk-btn ghost" id="rkIncEmpReload" type="button">Muat Ulang</button><button class="rk-btn" id="rkIncEmpPrint" type="button" disabled>Cetak PDF</button><button class="rk-btn" id="rkIncEmpPrintRekap" type="button" disabled>Cetak Rekap</button><button class="rk-btn" id="rkIncEmpPrintBkk" type="button" disabled>Cetak BKK</button><button class="rk-btn" id="rkIncEmpPrintReimburse" type="button" disabled>Cetak Reimbursement</button></div><div class="rk-card"><div class="rk-incentive-grid rk-incentive-period-grid"><label>Bulan<select class="rk-in" id="rkIncEmpMonth">'+incentiveMonthOptions(incentiveUI.period)+'</select></label><label>Tahun<select class="rk-in" id="rkIncEmpYear">'+incentiveYearOptions(periodYear)+'</select></label><label>Karyawan<select class="rk-in" id="rkIncEmpNik">'+opts+'</select></label><input type="hidden" id="rkIncEmpPeriod" value="'+escH(incentiveUI.period)+'"></div></div>'+(isSuperAdminRole()?'<details class="rk-card" style="margin-top:12px"><summary><b>Input Kurang Bayar Bulan Lalu</b></summary><div class="rk-incentive-grid" style="margin-top:12px"><label>Karyawan<select class="rk-in" id="rkUnderpaymentNik">'+opts+'</select></label><label>Nominal<input class="rk-in" id="rkUnderpaymentAmount" type="number" min="1" step="1" placeholder="Nominal kurang bayar"></label><label style="grid-column:1/-1">Keterangan<input class="rk-in" id="rkUnderpaymentNote" placeholder="Alasan penyesuaian"></label></div><div class="rk-toolbar"><button class="rk-btn" type="button" id="rkUnderpaymentSave" '+(isSuperAdminRole()?'':'disabled')+'>Simpan Kurang Bayar</button></div><div id="rkUnderpaymentResult" class="rk-incentive-note"></div></details>':'')+'<div id="rkIncEmpNotice" class="rk-incentive-note"></div><div id="rkIncEmpPreview" class="rk-card"><div class="rk-empty">Memuat rekap…</div></div>';
       var periodField=document.getElementById('rkIncEmpPeriod'),monthSelect=document.getElementById('rkIncEmpMonth'),yearSelect=document.getElementById('rkIncEmpYear');
       function updateSelectedPayrollPeriod(){
         var value=String(yearSelect.value||periodYear)+'-'+String(monthSelect.value||periodMonth).padStart(2,'0');
@@ -17541,7 +17667,7 @@ function renderIncentiveFormulaPage(){
   /* Brand and identity are intentionally far apart, as in the source PDF. */
   body.rk-printing-incentive .rk-incentive-exact-head { display:grid!important; grid-template-columns:105.52mm minmax(0,1fr)!important; gap:0!important; align-items:start!important; width:100%!important; height:62.64pt!important; min-height:62.64pt!important; margin:0!important; padding:0!important; }
   body.rk-printing-incentive .rk-incentive-exact-logo { display:flex!important; align-items:flex-start!important; justify-content:flex-start!important; width:31mm!important; max-width:31mm!important; height:13.6mm!important; max-height:13.6mm!important; margin:0!important; padding:0!important; }
-  body.rk-printing-incentive .rk-incentive-exact-logo img { display:block!important; width:30.7mm!important; height:13.6mm!important; max-width:30.7mm!important; max-height:13.6mm!important; margin-left:.96pt!important; object-fit:fill!important; object-position:left top!important; }
+  body.rk-printing-incentive .rk-incentive-exact-logo img { display:block!important; width:30.7mm!important; height:auto!important; max-width:30.7mm!important; max-height:11.77mm!important; margin-left:.96pt!important; object-fit:contain!important; object-position:left top!important; }
   body.rk-printing-incentive .rk-incentive-exact-identity { display:block!important; width:auto!important; min-width:0!important; margin:0!important; padding:0!important; font-size:9pt!important; line-height:9.96pt!important; color:#111!important; }
   body.rk-printing-incentive .rk-incentive-exact-identity h1 { display:block!important; margin:0!important; padding:0!important; height:13.88pt!important; font-family:Calibri,Carlito,sans-serif!important; font-size:10.42pt!important; line-height:13.88pt!important; font-weight:700!important; color:#111!important; }
   body.rk-printing-incentive .rk-incentive-exact-meta { display:grid!important; grid-template-columns:102.6pt minmax(0,1fr)!important; gap:0!important; width:100%!important; min-height:9.96pt!important; height:9.96pt!important; margin:0!important; padding:0!important; font-size:7.186pt!important; line-height:9.96pt!important; white-space:nowrap!important; }
@@ -17642,10 +17768,10 @@ function renderIncentiveFormulaPage(){
     white-space:normal!important; overflow:visible!important; margin:0!important; padding:0!important;
   }
   body.rk-printing-incentive .rk-incentive-exact-signatures>div>b {
-    margin-top:5.5mm!important; border:0!important; font-size:var(--rk-sig-fit-size,7.186pt)!important;
+    margin-top:14mm!important; border:0!important; font-size:var(--rk-sig-fit-size,7.186pt)!important;
     line-height:10pt!important; font-weight:700!important; overflow-wrap:anywhere!important;
   }
-  /* Selector spesifik mengalahkan aturan absolut lama agar nama tanda tangan rapat dengan label. */
+  /* Pertahankan jarak 14 mm antara label dan nama agar tersedia ruang tanda tangan manual yang cukup. */
   body.rk-printing-incentive .rk-incentive-exact-signatures>div:first-child>span,
   body.rk-printing-incentive .rk-incentive-exact-signatures>div:nth-child(2)>span,
   body.rk-printing-incentive .rk-incentive-exact-signatures>div:nth-child(3)>span,
@@ -17659,7 +17785,7 @@ function renderIncentiveFormulaPage(){
   body.rk-printing-incentive .rk-incentive-exact-signatures>div:first-child>b,
   body.rk-printing-incentive .rk-incentive-exact-signatures>div:nth-child(2)>b,
   body.rk-printing-incentive .rk-incentive-exact-signatures>div:nth-child(3)>b {
-    margin-top:5.5mm!important; font-size:var(--rk-sig-fit-size,7.186pt)!important;
+    margin-top:14mm!important; font-size:var(--rk-sig-fit-size,7.186pt)!important;
     line-height:10pt!important; font-weight:700!important; white-space:normal!important;
   }
   /* Rekap gabungan dipaksa menjadi satu A4 portrait. Seluruh tabel dan paraf diskalakan bersama. */
@@ -19906,7 +20032,7 @@ body.rh-desk-on .rk-cuti-detail-actions button:disabled {
  body.rk-printing-incentive .rk-incentive-exact-signatures{display:grid!important;grid-template-columns:47.1% 40.4% 12.5%!important;height:auto!important;min-height:18mm!important;max-height:none!important;margin:2mm 0 0!important;overflow:visible!important;}
  body.rk-printing-incentive .rk-incentive-exact-signatures>div{height:auto!important;min-height:18mm!important;max-height:none!important;overflow:visible!important;}
  body.rk-printing-incentive .rk-incentive-exact-signatures>div>span,body.rk-printing-incentive .rk-incentive-exact-signatures>div>b{position:static!important;display:block!important;transform:none!important;width:100%!important;max-width:100%!important;white-space:normal!important;text-align:center!important;overflow:visible!important;}
- body.rk-printing-incentive .rk-incentive-exact-signatures>div>b{margin-top:5.5mm!important;font-size:var(--rk-sig-fit-size,7.186pt)!important;line-height:10pt!important;}
+ body.rk-printing-incentive .rk-incentive-exact-signatures>div>b{margin-top:14mm!important;font-size:var(--rk-sig-fit-size,7.186pt)!important;line-height:10pt!important;}
 }
 </style>
 
@@ -20475,6 +20601,113 @@ body.rh-desk-on .rk-cuti-detail-actions button:disabled {
     padding-right:16px;
   }
 }
+</style>
+
+
+<style id="rh-v14-7-18-reimbursement-responsive-ui">
+/* Reimbursement UI: one shared form and data flow, responsive composition by viewport. */
+#reimbursementApp{box-sizing:border-box;min-width:0;}
+#reimbursementApp .reimbursement-balance{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:18px;}
+#reimbursementApp .reimbursement-balance-main{min-width:0;display:flex;flex-direction:column;gap:5px;}
+#reimbursementApp .reimbursement-balance-main>small{font-size:10px;letter-spacing:.08em;font-weight:800;color:#64786B;}
+#reimbursementApp .reimbursement-balance-main>strong{font-size:25px;line-height:1.15;letter-spacing:-.025em;color:#155B3A;font-weight:800;}
+#reimbursementApp .reimbursement-period{display:block;margin:0;color:#78877D;font-size:11px;font-weight:500;}
+#reimbursementApp .reimbursement-balance-breakdown{display:flex;align-items:center;gap:26px;padding-left:24px;border-left:1px solid #E2EAE4;}
+#reimbursementApp .reimbursement-balance-breakdown>div{display:flex;flex-direction:column;gap:5px;min-width:100px;}
+#reimbursementApp .reimbursement-balance-breakdown small{font-size:11px;color:#718078;font-weight:600;}
+#reimbursementApp .reimbursement-balance-breakdown b{font-size:14px;color:#304B3A;font-weight:750;}
+#reimbursementApp .reimbursement-tabs{display:flex;gap:10px;margin:14px 0 16px;}
+#reimbursementApp .reimbursement-tabs button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;flex:1;text-align:left;padding:12px 16px;border:1px solid #DCE7DF;border-radius:10px;background:#fff;color:#41594A;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;}
+#reimbursementApp .reimbursement-tabs button span{font-size:13px;font-weight:750;}
+#reimbursementApp .reimbursement-tabs button small{font-size:11px;color:#74847A;font-weight:500;white-space:nowrap;}
+#reimbursementApp .reimbursement-tabs button.on{border-color:#86B99A;background:#EDF6EF;color:#075C3D;box-shadow:inset 0 0 0 1px #C9E1D0;}
+#reimbursementApp .reimbursement-tabs button.on small{color:#39704E;}
+#reimbursementApp .reimbursement-workspace{display:block;min-width:0;}
+#reimbursementApp .reimbursement-form-card,#reimbursementApp .reimbursement-history-panel{box-sizing:border-box;min-width:0;margin:0;padding:22px;background:#fff;border:1px solid #DFE8E1;border-radius:12px;box-shadow:0 3px 14px rgba(29,67,44,.045);}
+#reimbursementApp .reimbursement-section-head,#reimbursementApp .reimbursement-history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin:0 0 20px;}
+#reimbursementApp .reimbursement-eyebrow{display:block;margin-bottom:5px;color:#6D8675;font-size:9px;font-weight:800;letter-spacing:.12em;}
+#reimbursementApp .reimbursement-section-head h3,#reimbursementApp .reimbursement-history-head h3{margin:0;color:#214632;font-size:18px;line-height:1.3;font-weight:750;}
+#reimbursementApp .reimbursement-section-head p,#reimbursementApp .reimbursement-history-head p{margin:5px 0 0;color:#78877D;font-size:11px;line-height:1.5;}
+#reimbursementApp .reimbursement-category-chip{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;padding:6px 10px;border:1px solid #D5E7D9;border-radius:20px;background:#F1F7F2;color:#286444;font-size:10px;font-weight:750;}
+#reimbursementApp .reimbursement-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 16px;}
+#reimbursementApp .reimbursement-field{display:flex;flex-direction:column;gap:7px;min-width:0;margin:0;}
+#reimbursementApp .reimbursement-field label{display:block;margin:0;color:#3D5948;font-size:11px;font-weight:750;line-height:1.35;}
+#reimbursementApp .reimbursement-field input:not([type=file]),#reimbursementApp .reimbursement-field textarea{box-sizing:border-box;width:100%;min-width:0;min-height:42px;padding:10px 12px;border:1px solid #D8E3DA;border-radius:8px;background:#fff;color:#24392C;font:inherit;font-size:12px;outline:none;transition:border-color .15s,box-shadow .15s;}
+#reimbursementApp .reimbursement-field input:focus,#reimbursementApp .reimbursement-field textarea:focus{border-color:#6BA783;box-shadow:0 0 0 3px rgba(42,131,81,.10);}
+#reimbursementApp .reimbursement-field textarea{min-height:100px;resize:vertical;line-height:1.5;}
+#reimbursementApp .reimbursement-field-note,#reimbursementApp .reimbursement-field-file{grid-column:1/-1;}
+#reimbursementApp .reimbursement-input-prefix{display:flex;align-items:center;overflow:hidden;border:1px solid #D8E3DA;border-radius:8px;background:#fff;}
+#reimbursementApp .reimbursement-input-prefix:focus-within{border-color:#6BA783;box-shadow:0 0 0 3px rgba(42,131,81,.10);}
+#reimbursementApp .reimbursement-input-prefix>span{display:flex;align-items:center;align-self:stretch;padding:0 12px;border-right:1px solid #E4EBE5;background:#F7FAF7;color:#65796A;font-size:12px;font-weight:700;}
+#reimbursementApp .reimbursement-input-prefix input{border:0!important;box-shadow:none!important;}
+#reimbursementApp .reimbursement-field input[type=file]{box-sizing:border-box;width:100%;min-width:0;min-height:46px;padding:7px;border:1px dashed #B8CCBE;border-radius:8px;background:#F8FBF8;color:#53695A;font-size:11px;}
+#reimbursementApp .reimbursement-field input[type=file]::file-selector-button{margin-right:10px;padding:7px 11px;border:1px solid #D4E4D8;border-radius:6px;background:#EAF4EC;color:#17613E;font-size:11px;font-weight:700;cursor:pointer;}
+#reimbursementApp .reimbursement-field .reimbursement-muted{font-size:10px;color:#7B8A80;line-height:1.4;}
+#reimbursementApp .reimbursement-over-note{display:none;align-items:flex-start;gap:6px;flex-direction:column;margin-top:14px;padding:10px 12px;border:1px solid #F0D19D;border-radius:8px;background:#FFF8EB;color:#8D540D;font-size:11px;line-height:1.45;}
+#reimbursementApp .reimbursement-over-note.is-visible{display:flex!important;}
+#reimbursementApp .reimbursement-over-note b{font-size:11px;}
+#reimbursementApp .reimbursement-form-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:18px;padding-top:16px;border-top:1px solid #EDF1ED;}
+#reimbursementApp .reimbursement-form-footer>span{max-width:65%;color:#7C8B80;font-size:10px;line-height:1.4;}
+#reimbursementApp #rhReimbursementSubmit{display:inline-flex;align-items:center;justify-content:center;flex:0 0 176px;width:auto;min-height:42px;margin:0;padding:10px 16px;border:1px solid #087A4B;border-radius:8px;background:#087A4B;color:#fff;font-size:12px;font-weight:750;box-shadow:0 2px 5px rgba(8,122,75,.14);}
+#reimbursementApp #rhReimbursementSubmit:hover{background:#066B41;}
+#reimbursementApp #rhReimbursementSubmit:disabled{opacity:.65;cursor:wait;}
+#reimbursementApp #rhReimbursementSubmit.over{border-color:#B42318!important;background:#B42318!important;color:#fff!important;}
+#reimbursementApp .reimbursement-history-head{align-items:center;margin-bottom:14px;}
+#reimbursementApp .reimbursement-refresh{flex:0 0 auto;width:auto;min-height:32px;padding:6px 10px;border:1px solid #D9E6DC;border-radius:7px;background:#fff;color:#286444;font-size:10px;font-weight:700;}
+#reimbursementApp .reimbursement-history-list{display:flex;flex-direction:column;gap:9px;}
+#reimbursementApp .reimbursement-history-item{position:relative;display:flex;flex-direction:column;gap:7px;width:100%;box-sizing:border-box;padding:13px 38px 13px 13px;border:1px solid #E3EBE5;border-radius:9px;background:#fff;color:#304737;text-align:left;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;}
+#reimbursementApp .reimbursement-history-item:hover{border-color:#9DBEAA;background:#FBFDFB;box-shadow:0 2px 8px rgba(29,67,44,.05);}
+#reimbursementApp .reimbursement-history-item:focus-visible{outline:3px solid rgba(37,130,76,.2);outline-offset:2px;}
+#reimbursementApp .reimbursement-history-top,#reimbursementApp .reimbursement-history-main{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;}
+#reimbursementApp .reimbursement-history-category{color:#315941;font-size:11px;font-weight:750;}
+#reimbursementApp .reimbursement-history-item .rk-pill{display:inline-flex;align-items:center;justify-content:center;padding:4px 8px;border:0;border-radius:999px;font-size:9px;line-height:1.1;font-weight:800;white-space:nowrap;}
+#reimbursementApp .reimbursement-history-item .rk-pill.warn{background:#F3F1E7;color:#7C662B;}
+#reimbursementApp .reimbursement-history-item .rk-pill.ok{background:#E4F2E8;color:#087446;}
+#reimbursementApp .reimbursement-history-item .rk-pill.no{background:#FBEAE7;color:#AF382C;}
+#reimbursementApp .reimbursement-history-main strong{color:#203E2D;font-size:14px;font-weight:800;}
+#reimbursementApp .reimbursement-history-main>span{color:#7A897F;font-size:10px;white-space:nowrap;}
+#reimbursementApp .reimbursement-history-note{display:block;overflow:hidden;color:#6F7E73;font-size:10px;line-height:1.45;text-overflow:ellipsis;}
+#reimbursementApp .reimbursement-history-over{color:#B42318;font-size:10px;font-weight:700;}
+#reimbursementApp .reimbursement-history-arrow{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#91A397;font-size:24px;line-height:1;}
+#reimbursementApp .reimbursement-history-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:190px;padding:20px;border:1px dashed #D8E4DA;border-radius:9px;background:#FAFCFA;color:#78887D;text-align:center;}
+#reimbursementApp .reimbursement-history-empty-icon{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:#EDF5EF;color:#267247;font-size:20px;}
+#reimbursementApp .reimbursement-history-empty b{color:#365A43;font-size:12px;}
+#reimbursementApp .reimbursement-history-empty span:last-child{font-size:10px;}
+@media (min-width:1200px){
+  body.rh-desk-on #rkp-reimbursementRequest{max-width:none!important;width:100%;}
+  body.rh-desk-on #rkp-reimbursementRequest .rk-reimbursement-desktop-page{width:100%;max-width:1420px;margin:0 auto;}
+  body.rh-desk-on #rkp-reimbursementRequest #reimbursementApp{width:100%;max-width:none;margin:0;}
+  body.rh-desk-on #reimbursementApp .reimbursement-workspace{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(380px,.92fr);}
+}
+@media (min-width:1024px) and (max-width:1199px){
+  body.rh-desk-on #rkp-reimbursementRequest{max-width:none!important;width:100%;}
+  body.rh-desk-on #rkp-reimbursementRequest .rk-reimbursement-desktop-page{width:100%;max-width:100%;margin:0 auto;}
+  body.rh-desk-on #rkp-reimbursementRequest #reimbursementApp{width:100%;max-width:none;margin:0;}
+  body.rh-desk-on #reimbursementApp .reimbursement-workspace{display:grid;grid-template-columns:minmax(0,1fr);}
+  body.rh-desk-on #reimbursementApp .reimbursement-history-panel{min-height:0;}
+}
+@media (max-width:700px){
+  #reimbursementApp .reimbursement-balance{align-items:flex-start;gap:12px;padding:14px;}
+  #reimbursementApp .reimbursement-balance-main>strong{font-size:21px;}
+  #reimbursementApp .reimbursement-balance-breakdown{gap:12px;padding-left:12px;}
+  #reimbursementApp .reimbursement-balance-breakdown>div{min-width:0;}
+  #reimbursementApp .reimbursement-balance-breakdown b{font-size:11px;}
+  #reimbursementApp .reimbursement-tabs{gap:7px;margin:12px 0;}
+  #reimbursementApp .reimbursement-tabs button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px;}
+  #reimbursementApp .reimbursement-tabs button span{font-size:12px;}
+  #reimbursementApp .reimbursement-tabs button small{font-size:9px;white-space:normal;}
+  #reimbursementApp .reimbursement-workspace{display:block;}
+  #reimbursementApp .reimbursement-form-card,#reimbursementApp .reimbursement-history-panel{padding:15px;margin:0 0 14px;border-radius:12px;}
+  #reimbursementApp .reimbursement-section-head,#reimbursementApp .reimbursement-history-head{margin-bottom:15px;}
+  #reimbursementApp .reimbursement-section-head h3,#reimbursementApp .reimbursement-history-head h3{font-size:16px;}
+  #reimbursementApp .reimbursement-form-grid{grid-template-columns:minmax(0,1fr);gap:13px;}
+  #reimbursementApp .reimbursement-field-note,#reimbursementApp .reimbursement-field-file{grid-column:auto;}
+  #reimbursementApp .reimbursement-form-footer{align-items:stretch;flex-direction:column;gap:10px;}
+  #reimbursementApp .reimbursement-form-footer>span{max-width:none;}
+  #reimbursementApp #rhReimbursementSubmit{width:100%;flex-basis:auto;min-height:46px;}
+  #reimbursementApp .reimbursement-balance-breakdown{border-left:0;padding-left:0;}
+}
+@media (prefers-reduced-motion:reduce){#reimbursementApp *{transition:none!important;}}
 </style>
 
 </body></html>

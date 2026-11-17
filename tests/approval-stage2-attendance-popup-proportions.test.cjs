@@ -6,7 +6,7 @@ const sw = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
 const css = (html.match(/<style id="rh-stage2-attendance-popup-proportions-v63">([\s\S]*?)<\/style>/) || [])[1] || '';
 let passed = 0, failed = 0;
 function check(name, ok) { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}`); ok ? passed++ : failed++; }
-check('v63 attendance popup stylesheet exists', !!css);
+check('attendance popup stylesheet from Stage 2 remains present', !!css);
 check('attendance popup width exactly matches Reimbursement desktop width', /width:min\(1120px,calc\(100vw - 56px\)\)/.test(css) && /max-width:1120px/.test(css));
 check('attendance popup height matches the Reimbursement preview footprint with viewport cap', /height:min\(594px,88vh\)/.test(css) && /max-height:88vh/.test(css));
 check('attendance popup uses the same compact desktop corner treatment', /border-radius:3px/.test(css));
@@ -17,6 +17,6 @@ check('details column scrolls internally rather than expanding the popup', /\.rk
 check('decision buttons stay anchored in the details column', /\.rk-att-actions\s*\{[\s\S]*?position:sticky[\s\S]*?bottom:0/.test(css));
 check('runtime sizing no longer expands popup based on natural content height', /function syncDesktopAttendanceApprovalMediaLayout\(shade\)[\s\S]*?layout\.style\.height='100%'[\s\S]*?body\.style\.height='100%'[\s\S]*?body\.scrollHeight>body\.clientHeight\+2/.test(html));
 check('mobile dialog flow remains separate from desktop sizing rules', /@media \(min-width:1024px\)[\s\S]*?\.rk-att-approval-panel/.test(css) && /@media \(max-width:1023px\) \{ #rkAttApprovalShade \{ display:none!important; \} \}/.test(html));
-check('HTML and Service Worker release markers match v63', /<meta name="reholz-release" content="v14\.7\.9-stage2-attendance-popup-proportions">/.test(html) && /const RH_EXPECTED_HTML_RELEASE = 'v14\.7\.9-stage2-attendance-popup-proportions'/.test(sw) && /rehholz-app-shell-v63/.test(sw));
+check('HTML and Service Worker release markers match v66', /<meta name="reholz-release" content="v14\.7\.18-stage4-reimbursement-desktop-ui">/.test(html) && /const RH_EXPECTED_HTML_RELEASE = 'v14\.7\.18-stage4-reimbursement-desktop-ui'/.test(sw) && /rehholz-app-shell-v72/.test(sw));
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
