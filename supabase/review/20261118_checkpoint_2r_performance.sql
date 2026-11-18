@@ -254,7 +254,7 @@ BEGIN
         CASE WHEN nullif(btrim(e.job_code),'') IS NULL AND r.outside_flag THEN 'Job Code kosong; tarif dinas luar tidak dihitung.' END
       ], NULL) AS day_warnings
     FROM rated r JOIN employees e ON e.employee_id=r.employee_id
-  ), period_calendar_base AS (
+  ), period_calendar_base AS MATERIALIZED (
     SELECT e.employee_id, g.dt::date AS tanggal,
       COALESCE((
         SELECT bh.branch
@@ -537,79 +537,5 @@ BEGIN
 END;
 $function$
 
-
-CREATE OR REPLACE FUNCTION public.get_pending_approvals(p_token text)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
-AS $function$
-DECLARE
-  v_emp public.karyawan;
-  v_abs json;
-  v_cuti json;
-  v_role text;
-BEGIN
-  v_emp := public.session_karyawan(p_token);
-  v_role := UPPER(COALESCE(v_emp.role,''));
-
-  SELECT COALESCE(json_agg(q.item ORDER BY q.sort_ts DESC), '[]'::json)
-  INTO v_abs
-  FROM (
-    SELECT public.absensi_to_json(a) AS item, a."timestamp" AS sort_ts
-    FROM public.absensi a
-    WHERE v_role IN ('KARYAWAN','SUPERADMIN')
-      AND a.status_approval='PENDING_ATASAN'
-      AND a.atasan_id=v_emp.employee_id
-    UNION ALL
-    SELECT public.absensi_to_json(a), a."timestamp"
-    FROM public.absensi a
-    WHERE v_role='SUPERADMIN'
-      AND a.status_approval='PENDING_HR'
-    UNION ALL
-    SELECT public.absensi_to_json(a), a."timestamp"
-    FROM public.absensi a
-    WHERE v_role='ADMIN'
-      AND a.status_approval IN ('PENDING_ATASAN','PENDING_HR')
-  ) q;
-
-  SELECT COALESCE(json_agg(q.item ORDER BY q.sort_ts DESC), '[]'::json)
-  INTO v_cuti
-  FROM (
-    SELECT public.cuti_to_json(c) AS item, c."timestamp" AS sort_ts
-    FROM public.pengajuan_cuti c
-    JOIN public.karyawan k ON k.employee_id=c.employee_id
-    WHERE v_role IN ('KARYAWAN','SUPERADMIN')
-      AND c.status_atasan='PENDING'
-      AND k.approval_line_id=v_emp.employee_id
-    UNION ALL
-    SELECT public.cuti_to_json(c), c."timestamp"
-    FROM public.pengajuan_cuti c
-    JOIN public.karyawan k ON k.employee_id=c.employee_id
-    WHERE v_role='SUPERADMIN'
-      AND c.status_atasan='DISETUJUI'
-      AND c.status_hr='PENDING'
-    UNION ALL
-    SELECT public.cuti_to_json(c), c."timestamp"
-    FROM public.pengajuan_cuti c
-    JOIN public.karyawan k ON k.employee_id=c.employee_id
-    WHERE v_role='ADMIN'
-      AND c.status_atasan='PENDING'
-    UNION ALL
-    SELECT public.cuti_to_json(c), c."timestamp"
-    FROM public.pengajuan_cuti c
-    JOIN public.karyawan k ON k.employee_id=c.employee_id
-    WHERE v_role='ADMIN'
-      AND c.status_atasan='DISETUJUI'
-      AND c.status_hr='PENDING'
-  ) q;
-
-  RETURN json_build_object(
-    'absensi', COALESCE(v_abs,'[]'::json),
-    'cuti', COALESCE(v_cuti,'[]'::json),
-    'total', json_array_length(COALESCE(v_abs,'[]'::json)) + json_array_length(COALESCE(v_cuti,'[]'::json))
-  );
-END;
-$function$;
 
 COMMIT;
