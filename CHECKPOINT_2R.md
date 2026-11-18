@@ -3,6 +3,7 @@
 - [x] Confirmed repository and active Supabase project identifiers.
 - [x] Confirmed repeated day-type helper calls in incentive period calendar.
 - [x] Read-only equivalence test: old/new period calendar both 625 rows; 0 old-only and 0 new-only rows; 54 distinct date/branch keys.
+- [x] Isolated calendar EXPLAIN ANALYZE sample: 99.66 ms old vs 32.11 ms materialized (not a full RPC benchmark).
 - [x] Read-only pending-approval role parity test: ADMIN, KARYAWAN, SUPERADMIN JSON arrays identical for both absensi and cuti on the sampled representative employee per role.
 - [x] Dashboard query-plan experiment completed; UNION ALL alternative rejected because it did not improve the tested plans.
 - [x] Captured incentive baseline output hash for 2026-11-01 through 2026-11-18; 37 employee records; payload 151,937 characters.
